@@ -4,7 +4,9 @@ import {
   Controls,
   Background,
   useNodesState,
-  useEdgesState
+  useEdgesState,
+  ReactFlowProvider,
+  useReactFlow
 } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -50,7 +52,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes: newNodes, edges };
 };
 
-export const WorkflowCanvas = () => {
+const WorkflowCanvasContent = () => {
   const {
     workflow,
     setSelectedTask,
@@ -60,6 +62,8 @@ export const WorkflowCanvas = () => {
     updateTasksPositions,
     theme
   } = useWorkflowStore();
+
+  const { fitView } = useReactFlow();
 
   const rawNodes: Node[] = useMemo(() => {
     return workflow.tasks.map((task) => {
@@ -202,8 +206,8 @@ export const WorkflowCanvas = () => {
   const tasksOrderSignature = workflow.tasks.map(t => t.id).join(',');
   const edgesSignature = rawEdges.map(e => `${e.source}->${e.target}`).join(',');
 
-  const prevTasksOrder = useRef(tasksOrderSignature);
-  const prevEdgesSignature = useRef(edgesSignature);
+  const prevTasksOrder = useRef("");
+  const prevEdgesSignature = useRef("");
 
   const handleAutoLayout = useCallback(() => {
     if (rawNodes.length === 0) return;
@@ -225,6 +229,14 @@ export const WorkflowCanvas = () => {
       handleAutoLayout();
     }
   }, [tasksOrderSignature, edgesSignature, handleAutoLayout]);
+
+  // Smoothly center and fit viewport whenever tasks list or edges change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fitView({ duration: 600, padding: 0.2 });
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [fitView, tasksOrderSignature, edgesSignature]);
 
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
@@ -292,5 +304,13 @@ export const WorkflowCanvas = () => {
         </ReactFlow>
       </div>
     </div>
+  );
+};
+
+export const WorkflowCanvas = () => {
+  return (
+    <ReactFlowProvider>
+      <WorkflowCanvasContent />
+    </ReactFlowProvider>
   );
 };
