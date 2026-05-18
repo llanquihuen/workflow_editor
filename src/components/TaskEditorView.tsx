@@ -172,22 +172,24 @@ export const TaskEditorView = () => {
         ) : (
           <div className="editor-form">
 
-            <div className="editor-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--panel-border)', padding: '10px', borderRadius: '6px', marginBottom: '15px' }}>
-              <span style={{ fontWeight: 'bold' }}>Orden: {selectedTask.order}</span>
-              <div style={{ display: 'flex', gap: '5px' }}>
+            <div className="editor-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
+              <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>Orden del Paso: {selectedTask.order}</span>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <button
-                  className="btn-small"
+                  className="btn-secondary btn-small"
                   disabled={selectedIndex <= 1}
                   onClick={() => reorderTask(selectedTask.id, 'up')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
-                  ⬆️ Subir
+                  <span>⬆️</span> Subir
                 </button>
                 <button
-                  className="btn-small"
+                  className="btn-secondary btn-small"
                   disabled={selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1}
                   onClick={() => reorderTask(selectedTask.id, 'down')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
-                  ⬇️ Bajar
+                  <span>⬇️</span> Bajar
                 </button>
               </div>
             </div>
@@ -282,9 +284,9 @@ export const TaskEditorView = () => {
             </div>
 
             {selectedIndex > 0 && (
-              <div className="editor-section" style={{ marginTop: '30px', borderTop: '1px solid var(--panel-border)', paddingTop: '20px' }}>
+              <div className="editor-section">
                 <h4>Condición de Activación</h4>
-                <p className="form-desc" style={{ marginBottom: '10px' }}>Selecciona una pregunta de un formulario previo para condicionar cuándo se ejecuta esta tarea.</p>
+                <p className="form-desc" style={{ marginBottom: '15px' }}>Selecciona una pregunta de un formulario previo para condicionar cuándo se ejecuta esta tarea.</p>
 
                 <div className="editor-field">
                   <label>Depende de la pregunta:</label>
@@ -314,6 +316,18 @@ export const TaskEditorView = () => {
                         <option value="equals">Es igual a</option>
                         <option value="not_equals">No es igual a</option>
                         <option value="contains">Contiene</option>
+                        {(() => {
+                          const targetQ = availableQuestions.find(q => q.question.id === selectedTask.condition?.questionId)?.question;
+                          if (targetQ && targetQ.type === 'number') {
+                            return (
+                              <>
+                                <option value="greater_than">Mayor que (&gt;)</option>
+                                <option value="less_than">Menor que (&lt;)</option>
+                              </>
+                            );
+                          }
+                          return null;
+                        })()}
                       </select>
                     </div>
                     <div className="editor-field" style={{ flex: 2, marginBottom: 0 }}>
@@ -351,13 +365,13 @@ export const TaskEditorView = () => {
             )}
 
             {selectedIndex > 0 && (
-              <div className="editor-section" style={{ marginTop: '30px', borderTop: '1px solid var(--panel-border)', paddingTop: '20px' }}>
+              <div className="editor-actions">
                 <button
                   className="btn-primary"
-                  style={{ backgroundColor: 'var(--danger)', width: '100%' }}
+                  style={{ backgroundColor: 'var(--danger)', width: '100%', padding: '12px', fontWeight: 'bold', borderRadius: '6px' }}
                   onClick={handleDeleteTask}
                 >
-                  Eliminar Tarea
+                  🗑️ Eliminar Tarea
                 </button>
               </div>
             )}

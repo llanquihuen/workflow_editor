@@ -7,7 +7,7 @@ import { FormLibraryView } from './components/FormLibraryView';
 import { useWorkflowStore } from './store/useWorkflowStore';
 
 function App() {
-  const [showJson, setShowJson] = useState(true);
+  const [showJson, setShowJson] = useState(false);
   const { currentView, setCurrentView, theme, toggleTheme } = useWorkflowStore();
 
   return (
@@ -33,19 +33,18 @@ function App() {
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button 
-            className="btn-icon" 
+          <button
+            className="btn-icon"
             onClick={toggleTheme}
             style={{ fontSize: '1.2rem', color: 'var(--text-main)' }}
             title={theme === 'light' ? 'Modo Oscuro' : 'Modo Claro'}
           >
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
-          
+
           <button
-            className="btn-primary"
+            className={showJson ? "btn-secondary" : "btn-primary"}
             onClick={() => setShowJson(!showJson)}
-            style={{ backgroundColor: showJson ? 'var(--panel-border)' : 'var(--primary)' }}
           >
             {showJson ? 'Ocultar JSON' : 'Mostrar JSON'}
           </button>

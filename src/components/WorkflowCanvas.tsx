@@ -137,6 +137,8 @@ export const WorkflowCanvas = () => {
             let opText = '==';
             if (targetTask.condition!.operator === 'not_equals') opText = '!=';
             if (targetTask.condition!.operator === 'contains') opText = 'contiene';
+            if (targetTask.condition!.operator === 'greater_than') opText = '>';
+            if (targetTask.condition!.operator === 'less_than') opText = '<';
             label = `Si ${question.label} ${opText} ${targetTask.condition!.value}`;
           } else {
             label = 'Condicional';
