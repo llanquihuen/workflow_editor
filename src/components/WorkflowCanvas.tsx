@@ -1,0 +1,294 @@
+import { useCallback, useMemo, useEffect, useRef } from 'react';
+import {
+  ReactFlow,
+  Controls,
+  Background,
+  useNodesState,
+  useEdgesState
+} from '@xyflow/react';
+import type { Node, Edge } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import dagre from 'dagre';
+import { useWorkflowStore } from '../store/useWorkflowStore';
+import { TaskNode } from './TaskNode';
+import { DUMMY_USERS } from '../utils/constants';
+
+const nodeTypes = { customTask: TaskNode };
+
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  dagreGraph.setGraph({ rankdir: direction, nodesep: 250, ranksep: 50 });
+
+  nodes.forEach((node) => {
+    const formTitles = node.data?.formTitles as string[] || [];
+    // Base height ~110px. If there are forms, add the header space + space for each form.
+    const estimatedHeight = 110 + (formTitles.length > 0 ? 25 + (formTitles.length * 18) : 25);
+    dagreGraph.setNode(node.id, { width: 220, height: estimatedHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const newNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    const formTitles = node.data?.formTitles as string[] || [];
+    const estimatedHeight = 110 + (formTitles.length > 0 ? 25 + (formTitles.length * 18) : 25);
+
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - 220 / 2,
+        y: nodeWithPosition.y - estimatedHeight / 2,
+      },
+    };
+  });
+
+  return { nodes: newNodes, edges };
+};
+
+export const WorkflowCanvas = () => {
+  const {
+    workflow,
+    setSelectedTask,
+    selectedTaskId,
+    addTask,
+    updateTask,
+    updateTasksPositions,
+    theme
+  } = useWorkflowStore();
+
+  const rawNodes: Node[] = useMemo(() => {
+    return workflow.tasks.map((task) => {
+      const formTitles = (task.formIds || []).map(id => {
+        const form = (workflow.forms || []).find(f => f.id === id);
+        return form ? form.title : id;
+      });
+
+      const approverNames = (task.approverIds || []).map(id => {
+        const user = DUMMY_USERS.find(u => u.id === id);
+        return user ? user.name.split(' (')[0] : id;
+      });
+
+      return {
+        id: task.id,
+        type: 'customTask',
+        position: { x: task.ui_metadata.x, y: task.ui_metadata.y },
+        data: {
+          label: task.name,
+          formTitles: formTitles,
+          approvers: approverNames,
+          condition: task.condition,
+          order: task.order
+        },
+        selected: selectedTaskId === task.id
+      };
+    });
+  }, [workflow.tasks, workflow.forms, selectedTaskId]);
+
+  const rawEdges: Edge[] = useMemo(() => {
+    const edges: Edge[] = [];
+    if (workflow.tasks.length === 0) return edges;
+
+    let uncoveredLeaves = [workflow.tasks[0].id];
+
+    const isSameCondition = (c1: any, c2: any) => {
+      if (!c1 && !c2) return true;
+      if (!c1 || !c2) return false;
+      return c1.dependentTaskId === c2.dependentTaskId &&
+        c1.formId === c2.formId &&
+        c1.questionId === c2.questionId &&
+        c1.operator === c2.operator &&
+        c1.value === c2.value;
+    };
+
+    for (let i = 1; i < workflow.tasks.length; i++) {
+      const targetTask = workflow.tasks[i];
+      const isConditional = !!targetTask.condition;
+
+      if (isConditional) {
+        let sourceId = '';
+
+        // Buscar hacia atrás la tarea origen:
+        // 1. O la última tarea incondicional.
+        // 2. O la última tarea con exactamente la misma condición.
+        for (let j = i - 1; j >= 0; j--) {
+          const prevTask = workflow.tasks[j];
+          if (!prevTask.condition || isSameCondition(prevTask.condition, targetTask.condition)) {
+            sourceId = prevTask.id;
+            break;
+          }
+        }
+
+        if (!sourceId) sourceId = workflow.tasks[0].id; // Fallback
+
+        const sourceTask = workflow.tasks.find(t => t.id === sourceId);
+        const sourceHasSameCondition = isSameCondition(sourceTask?.condition, targetTask.condition);
+
+        let label = undefined;
+        // Solo mostrar label si es el inicio de la rama
+        if (!sourceHasSameCondition) {
+          const form = (workflow.forms || []).find(f => f.id === targetTask.condition!.formId);
+          const question = form?.questions.find(q => q.id === targetTask.condition!.questionId);
+          if (question) {
+            let opText = '==';
+            if (targetTask.condition!.operator === 'not_equals') opText = '!=';
+            if (targetTask.condition!.operator === 'contains') opText = 'contiene';
+            label = `Si ${question.label} ${opText} ${targetTask.condition!.value}`;
+          } else {
+            label = 'Condicional';
+          }
+        }
+
+        edges.push({
+          id: `e-${sourceId}-${targetTask.id}`,
+          source: sourceId,
+          target: targetTask.id,
+          animated: true,
+          label: label,
+          style: { stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '5,5' },
+          labelBgStyle: label ? { fill: 'var(--panel-bg)', fillOpacity: 0.9 } : undefined,
+          labelStyle: label ? { fill: 'var(--text-main)', fontWeight: 600, fontSize: 10 } : undefined,
+        });
+
+        if (sourceHasSameCondition) {
+          // Reemplaza a su predecesor directo en las hojas (es una continuación)
+          uncoveredLeaves = uncoveredLeaves.filter(id => id !== sourceId);
+          uncoveredLeaves.push(targetTask.id);
+        } else {
+          // Es una nueva rama, el origen no se consume
+          uncoveredLeaves.push(targetTask.id);
+        }
+
+      } else {
+        // Tarea incondicional: conecta desde TODAS las hojas no cubiertas
+        if (uncoveredLeaves.length === 0) {
+          uncoveredLeaves.push(workflow.tasks[i - 1].id);
+        }
+
+        uncoveredLeaves.forEach(leafId => {
+          edges.push({
+            id: `e-${leafId}-${targetTask.id}`,
+            source: leafId,
+            target: targetTask.id,
+            animated: false,
+            style: { stroke: 'var(--edge-stroke)', strokeWidth: 2 },
+          });
+        });
+
+        // Esta tarea consume todas las ramas
+        uncoveredLeaves = [targetTask.id];
+      }
+    }
+    return edges;
+  }, [workflow.tasks, workflow.forms]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(rawNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
+
+  useEffect(() => {
+    setNodes(rawNodes);
+  }, [rawNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges(rawEdges);
+  }, [rawEdges, setEdges]);
+
+  const tasksOrderSignature = workflow.tasks.map(t => t.id).join(',');
+  const edgesSignature = rawEdges.map(e => `${e.source}->${e.target}`).join(',');
+
+  const prevTasksOrder = useRef(tasksOrderSignature);
+  const prevEdgesSignature = useRef(edgesSignature);
+
+  const handleAutoLayout = useCallback(() => {
+    if (rawNodes.length === 0) return;
+    const { nodes: layoutedNodes } = getLayoutedElements(rawNodes, rawEdges);
+    updateTasksPositions(layoutedNodes.map(n => ({
+      id: n.id,
+      x: n.position.x,
+      y: n.position.y
+    })));
+  }, [rawNodes, rawEdges, updateTasksPositions]);
+
+  useEffect(() => {
+    if (
+      tasksOrderSignature !== prevTasksOrder.current ||
+      edgesSignature !== prevEdgesSignature.current
+    ) {
+      prevTasksOrder.current = tasksOrderSignature;
+      prevEdgesSignature.current = edgesSignature;
+      handleAutoLayout();
+    }
+  }, [tasksOrderSignature, edgesSignature, handleAutoLayout]);
+
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      setSelectedTask(node.id);
+    },
+    [setSelectedTask]
+  );
+
+  const onPaneClick = useCallback(() => {
+    setSelectedTask(null);
+  }, [setSelectedTask]);
+
+  const onNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
+    updateTask(node.id, { ui_metadata: { x: node.position.x, y: node.position.y } });
+  }, [updateTask]);
+
+  const isDuplicateTaskName = (name: string) => {
+    return workflow.tasks.some(t => t.name.toLowerCase() === name.toLowerCase().trim());
+  };
+
+  const handleAddNewTask = () => {
+    let baseName = 'Nueva Tarea';
+    let newName = baseName;
+    let counter = 1;
+    while (isDuplicateTaskName(newName)) {
+      newName = `${baseName} ${counter}`;
+      counter++;
+    }
+
+    const newTask = {
+      id: `task-${Date.now()}`,
+      name: newName,
+      order: workflow.tasks.length + 1,
+      ui_metadata: { x: 0, y: 0 }
+    };
+    addTask(newTask);
+  };
+
+  return (
+    <div className="panel-container canvas-panel" style={{ position: 'relative' }}>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3>Canvas Visual</h3>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="btn-small" style={{ backgroundColor: '#475569' }} onClick={handleAutoLayout}>✨ Auto-Ordenar</button>
+          <button className="btn-small" onClick={handleAddNewTask}>+ Añadir Tarea</button>
+        </div>
+      </div>
+      <div className="panel-content" style={{ padding: 0 }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
+          onNodeDragStop={onNodeDragStop}
+          fitView
+          proOptions={{ hideAttribution: true }}
+          nodesDraggable={true}
+          nodesConnectable={false}
+        >
+          <Background color={theme === 'light' ? '#cbd5e1' : '#334155'} gap={20} />
+          <Controls />
+        </ReactFlow>
+      </div>
+    </div>
+  );
+};
