@@ -7,7 +7,6 @@ export const FormLibraryView = () => {
   const { workflow, selectedFormId, setSelectedForm, addForm, updateForm, deleteForm } = useWorkflowStore();
   const forms = workflow.forms || [];
   const selectedForm = forms.find(f => f.id === selectedFormId);
-  const [editingOptions, setEditingOptions] = useState<Record<string, string>>({});
   const [editingTitle, setEditingTitle] = useState<Record<string, string>>({});
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
   const [showPreview, setShowPreview] = useState(true);
@@ -323,21 +322,89 @@ export const FormLibraryView = () => {
 
                             {(q.type === 'dropdown' || q.type === 'radio' || q.type === 'checkbox') && (
                               <div className="options-editor">
-                                <label>Opciones (separadas por comas)</label>
-                                <input
-                                  type="text" className="form-input"
-                                  value={editingOptions[q.id] !== undefined ? editingOptions[q.id] : (q.options?.join(', ') || '')}
-                                  onChange={(e) => {
-                                    setEditingOptions({ ...editingOptions, [q.id]: e.target.value });
-                                    const opts = e.target.value.split(',').map(o => o.trim()).filter(o => o.length > 0);
-                                    handleQuestionUpdate(q.id, { options: opts });
-                                  }}
-                                  onBlur={() => {
-                                    const newEditing = { ...editingOptions };
-                                    delete newEditing[q.id];
-                                    setEditingOptions(newEditing);
-                                  }}
-                                />
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Opciones del Campo</label>
+                                
+                                {/* Lista de tags/píldoras existentes */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                                  {(q.options || []).map((opt, optIndex) => (
+                                    <div 
+                                      key={optIndex} 
+                                      className="multiselect-pill" 
+                                      style={{ 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '6px', 
+                                        backgroundColor: 'var(--panel-border)', 
+                                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                                        color: 'var(--text-main)', 
+                                        padding: '4px 10px', 
+                                        borderRadius: '16px',
+                                        fontSize: '0.85rem'
+                                      }}
+                                    >
+                                      <span>{opt}</span>
+                                      <span 
+                                        className="pill-remove" 
+                                        onClick={() => {
+                                          const newOpts = (q.options || []).filter((_, i) => i !== optIndex);
+                                          handleQuestionUpdate(q.id, { options: newOpts });
+                                        }}
+                                        style={{ cursor: 'pointer', fontWeight: 'bold', color: 'var(--text-muted)' }}
+                                        title="Eliminar opción"
+                                      >
+                                        ×
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {(q.options || []).length === 0 && (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                      No hay opciones definidas. Añade una abajo.
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Campo para añadir una nueva opción */}
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Escribe una opción y presiona Enter..."
+                                    id={`new-opt-input-${q.id}`}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        const target = e.currentTarget;
+                                        const val = target.value.trim();
+                                        if (val) {
+                                          const currentOpts = q.options || [];
+                                          if (!currentOpts.includes(val)) {
+                                            handleQuestionUpdate(q.id, { options: [...currentOpts, val] });
+                                          }
+                                          target.value = '';
+                                        }
+                                      }
+                                    }}
+                                    style={{ flex: 1 }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => {
+                                      const inputEl = document.getElementById(`new-opt-input-${q.id}`) as HTMLInputElement;
+                                      const val = inputEl ? inputEl.value.trim() : '';
+                                      if (val) {
+                                        const currentOpts = q.options || [];
+                                        if (!currentOpts.includes(val)) {
+                                          handleQuestionUpdate(q.id, { options: [...currentOpts, val] });
+                                        }
+                                        inputEl.value = '';
+                                      }
+                                    }}
+                                    style={{ padding: '0 15px', height: '38px', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}
+                                  >
+                                    Añadir
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </div>
