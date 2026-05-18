@@ -48,6 +48,7 @@ const initialTasks: Task[] = recalculateLayout([
     name: "Registro e Inscripción",
     order: 1,
     formIds: ["form-registro"],
+    approverIds: ["usr-18"], // Javier Castillo (Administración)
     ui_metadata: { x: 0, y: 0 }
   },
   {
@@ -55,6 +56,7 @@ const initialTasks: Task[] = recalculateLayout([
     name: "Autorización de Menores",
     order: 2,
     formIds: ["form-autorizacion"],
+    approverIds: ["usr-10"], // Diego Torres (Legal)
     condition: {
       dependentTaskId: "task-1",
       formId: "form-registro",
@@ -69,6 +71,7 @@ const initialTasks: Task[] = recalculateLayout([
     name: "Trámites de Viaje Internacional",
     order: 3,
     formIds: ["form-internacional"],
+    approverIds: ["usr-8"], // David Sánchez (Logística)
     condition: {
       dependentTaskId: "task-1",
       formId: "form-registro",
@@ -83,6 +86,7 @@ const initialTasks: Task[] = recalculateLayout([
     name: "Logística de Alojamiento",
     order: 4,
     formIds: ["form-estancia"],
+    approverIds: ["usr-8", "usr-5"], // David Sánchez (Logística) y Elena Gómez (Operaciones)
     ui_metadata: { x: 0, y: 0 }
   },
   {
@@ -90,6 +94,7 @@ const initialTasks: Task[] = recalculateLayout([
     name: "Preparación de Equipamiento Técnico",
     order: 5,
     formIds: ["form-equipamiento"],
+    approverIds: ["usr-4"], // Juan Pérez (IT)
     condition: {
       dependentTaskId: "task-1",
       formId: "form-registro",
@@ -103,7 +108,7 @@ const initialTasks: Task[] = recalculateLayout([
     id: "task-6",
     name: "Aprobación Académica y Presupuestaria",
     order: 6,
-    approverIds: ["usr-1", "usr-2", "usr-3"],
+    approverIds: ["usr-1", "usr-2", "usr-20"], // Ana García (Gerente), Carlos López (Finanzas) y Gabriel Herrera (Dirección)
     ui_metadata: { x: 0, y: 0 }
   }
 ]);
