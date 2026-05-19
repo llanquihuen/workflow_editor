@@ -167,6 +167,30 @@ body {
   background-color: var(--edge-stroke);
 }
 
+.btn-discreet {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.btn-discreet:hover {
+  background-color: var(--panel-border);
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+.btn-discreet.active {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
 .error-banner {
   background-color: rgba(239, 68, 68, 0.1);
   color: var(--danger);
@@ -613,10 +637,17 @@ body {
 
 .library-sidebar {
   width: 280px;
+  min-width: 280px;
   background-color: var(--panel-bg);
   border-right: 1px solid var(--panel-border);
   display: flex;
   flex-direction: column;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.library-sidebar.library-sidebar-min {
+  width: 68px;
+  min-width: 68px;
 }
 
 .sidebar-header {
@@ -624,6 +655,12 @@ body {
   border-bottom: 1px solid var(--panel-border);
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  transition: padding 0.3s;
+}
+
+.library-sidebar-min .sidebar-header {
+  padding: 15px 5px;
   align-items: center;
 }
 
@@ -644,7 +681,12 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, padding 0.3s, justify-content 0.3s;
+}
+
+.library-sidebar-min .form-list-item {
+  padding: 12px 0;
+  justify-content: center;
 }
 
 .form-list-item:hover {
@@ -654,6 +696,32 @@ body {
 .form-list-item.active {
   background-color: rgba(59, 130, 246, 0.15);
   border-left: 3px solid var(--primary);
+}
+
+.library-sidebar-min .form-list-item.active {
+  border-left: none;
+  position: relative;
+}
+
+.library-sidebar-min .form-list-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--primary);
+}
+
+.library-sidebar-min .form-avatar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: scale(1);
+}
+
+.library-sidebar-min .form-list-item:hover .form-avatar {
+  background-color: var(--primary) !important;
+  color: white !important;
+  transform: scale(1.1);
 }
 
 .library-editor {

@@ -10,6 +10,7 @@ export const FormLibraryView = () => {
   const [editingTitle, setEditingTitle] = useState<Record<string, string>>({});
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
   const [showPreview, setShowPreview] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const evaluateCondition = (condition?: import('../types/workflow.types').FormQuestionCondition) => {
     if (!condition) return true;
@@ -105,10 +106,28 @@ export const FormLibraryView = () => {
   return (
     <div className="form-library-layout">
       {/* Sidebar de Formularios */}
-      <div className="library-sidebar">
+      <div className={`library-sidebar ${isCollapsed ? 'library-sidebar-min' : ''}`}>
         <div className="sidebar-header">
-          <h3>Formularios ({forms.length})</h3>
-          <button className="btn-small" onClick={handleCreateForm}>+ Nuevo</button>
+          {!isCollapsed ? (
+            <>
+              <h3>Formularios ({forms.length})</h3>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <button className="btn-small" onClick={handleCreateForm} title="Nuevo formulario">+ Nuevo</button>
+                <button className="btn-icon" onClick={() => setIsCollapsed(true)} title="Colapsar menú" style={{ color: 'var(--text-muted)' }}>
+                  ◀
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', alignItems: 'center' }}>
+              <button className="btn-icon" onClick={() => setIsCollapsed(false)} title="Expandir menú" style={{ color: 'var(--text-muted)' }}>
+                ▶
+              </button>
+              <button className="btn-icon" onClick={handleCreateForm} title="Nuevo formulario" style={{ backgroundColor: 'var(--success)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', padding: 0 }}>
+                +
+              </button>
+            </div>
+          )}
         </div>
         <div className="forms-list">
           {forms.map(f => (
@@ -116,17 +135,46 @@ export const FormLibraryView = () => {
               key={f.id}
               className={`form-list-item ${f.id === selectedFormId ? 'active' : ''}`}
               onClick={() => setSelectedForm(f.id)}
+              title={isCollapsed ? f.title : undefined}
             >
-              <span>{f.title}</span>
-              <button
-                className="btn-icon danger remove-form"
-                onClick={(e) => { e.stopPropagation(); deleteForm(f.id); }}
-              >
-                ×
-              </button>
+              {isCollapsed ? (
+                <div className="min-form-item" style={{ width: '100%', display: 'flex', justifyContent: 'center', position: 'relative' }}>
+                  <span className="form-avatar" style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: f.id === selectedFormId ? 'var(--primary)' : 'var(--panel-border)',
+                    color: f.id === selectedFormId ? 'white' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 'bold',
+                    fontSize: '0.85rem',
+                    transition: 'all 0.2s'
+                  }}>
+                    {f.title.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <span>{f.title}</span>
+                  <button
+                    className="btn-icon danger remove-form"
+                    onClick={(e) => { e.stopPropagation(); deleteForm(f.id); }}
+                  >
+                    ×
+                  </button>
+                </>
+              )}
             </div>
           ))}
-          {forms.length === 0 && <p className="form-desc" style={{ padding: '15px' }}>No hay formularios creados.</p>}
+          {forms.length === 0 && (
+            isCollapsed ? (
+              <div style={{ textAlign: 'center', padding: '15px 0', color: 'var(--text-muted)', fontSize: '0.8rem' }} title="No hay formularios">∅</div>
+            ) : (
+              <p className="form-desc" style={{ padding: '15px' }}>No hay formularios creados.</p>
+            )
+          )}
         </div>
       </div>
 
@@ -134,92 +182,195 @@ export const FormLibraryView = () => {
       <div className="library-editor-area">
         <PanelGroup orientation="horizontal">
           <Panel defaultSize={showPreview ? 60 : 100} minSize={30}>
-            <div className="library-editor panel-content padded-content" style={{ height: '100%', overflowY: 'auto' }}>
-              {!selectedForm ? (
-                <div className="empty-state">
-                  <p>Selecciona o crea un formulario en la lista lateral para editarlo.</p>
-                </div>
-              ) : (
-                <div className="editor-form">
-                  <div className="editor-section config-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                      <h4 style={{ margin: 0, fontSize: '1.2rem' }}>Configuración del Formulario</h4>
-                      <button className={showPreview ? "btn-secondary" : "btn-primary"} style={{ padding: '4px 10px', fontSize: '0.8rem' }} onClick={() => setShowPreview(!showPreview)}>
-                        {showPreview ? 'Ocultar Previsualización' : 'Mostrar Previsualización'}
-                      </button>
-                    </div>
-                    <div className="editor-field">
-                      <label>Título del Formulario</label>
-                      <input
-                        type="text"
-                        className={`form-input ${editingTitle[selectedForm.id] !== undefined && isDuplicateName(editingTitle[selectedForm.id], selectedForm.id) ? 'error' : ''}`}
-                        value={editingTitle[selectedForm.id] !== undefined ? editingTitle[selectedForm.id] : selectedForm.title}
-                        onChange={handleTitleChange}
-                        onBlur={handleTitleBlur}
-                        style={editingTitle[selectedForm.id] !== undefined && isDuplicateName(editingTitle[selectedForm.id], selectedForm.id) ? { borderColor: '#ef4444' } : {}}
-                      />
-                      {editingTitle[selectedForm.id] !== undefined && isDuplicateName(editingTitle[selectedForm.id], selectedForm.id) && (
-                        <span className="error-text" style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                          Este nombre de formulario ya existe.
-                        </span>
-                      )}
-                    </div>
-                    <div className="editor-field">
-                      <label>Descripción (opcional)</label>
-                      <textarea className="form-input textarea" value={selectedForm.description || ''} onChange={handleDescChange} />
-                    </div>
+            <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+              {selectedForm && !showPreview && (
+                <button
+                  className="btn-discreet"
+                  style={{
+                    position: 'absolute',
+                    top: '20px',
+                    right: '20px',
+                    zIndex: 10,
+                    boxShadow: '0 2px 8px var(--shadow-color)',
+                    backgroundColor: 'var(--panel-bg)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                  onClick={() => setShowPreview(true)}
+                  title="Mostrar Previsualización"
+                >
+                  👁️ Previsualizar
+                </button>
+              )}
+
+              <div className="library-editor panel-content padded-content" style={{ height: '100%', overflowY: 'auto' }}>
+                {!selectedForm ? (
+                  <div className="empty-state">
+                    <p>Selecciona o crea un formulario en la lista lateral para editarlo.</p>
                   </div>
-
-                  <div className="editor-section">
-                    <div className="section-header-row">
-                      <h4>Preguntas</h4>
-                      <button className="btn-small" onClick={handleAddQuestion}>+ Añadir Pregunta</button>
+                ) : (
+                  <div className="editor-form">
+                    <div className="editor-section config-card">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h4 style={{ margin: 0, fontSize: '1.2rem' }}>Configuración del Formulario</h4>
+                      </div>
+                      <div className="editor-field">
+                        <label>Título del Formulario</label>
+                        <input
+                          type="text"
+                          className={`form-input ${editingTitle[selectedForm.id] !== undefined && isDuplicateName(editingTitle[selectedForm.id], selectedForm.id) ? 'error' : ''}`}
+                          value={editingTitle[selectedForm.id] !== undefined ? editingTitle[selectedForm.id] : selectedForm.title}
+                          onChange={handleTitleChange}
+                          onBlur={handleTitleBlur}
+                          style={editingTitle[selectedForm.id] !== undefined && isDuplicateName(editingTitle[selectedForm.id], selectedForm.id) ? { borderColor: '#ef4444' } : {}}
+                        />
+                        {editingTitle[selectedForm.id] !== undefined && isDuplicateName(editingTitle[selectedForm.id], selectedForm.id) && (
+                          <span className="error-text" style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                            Este nombre de formulario ya existe.
+                          </span>
+                        )}
+                      </div>
+                      <div className="editor-field">
+                        <label>Descripción (opcional)</label>
+                        <textarea className="form-input textarea" value={selectedForm.description || ''} onChange={handleDescChange} />
+                      </div>
                     </div>
 
-                    {selectedForm.questions.length === 0 ? (
-                      <p className="form-desc">Este formulario no tiene preguntas.</p>
-                    ) : (
-                      <div className="questions-editor-list">
-                        {selectedForm.questions.map((q, index) => (
-                          <div key={q.id} className="question-editor-card">
-                            <div className="card-header" style={{ alignItems: 'flex-start' }}>
-                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <input
-                                  type="text" className="form-input label-input" value={q.label}
-                                  onChange={(e) => handleQuestionUpdate(q.id, { label: e.target.value })}
-                                />
-                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                  {q.required && <span className="node-badge badge-required">Obligatorio</span>}
-                                  {q.condition && (
-                                    <span className="node-badge badge-conditional-q" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                      Condicional
-                                      <span style={{ fontWeight: 'bold', opacity: 0.8, fontSize: '0.63rem' }}>
-                                        (Depende de: {selectedForm.questions.find(pq => pq.id === q.condition!.questionId)?.label || 'Desconocida'})
+                    <div className="editor-section">
+                      <div className="section-header-row">
+                        <h4>Preguntas</h4>
+                        <button className="btn-small" onClick={handleAddQuestion}>+ Añadir Pregunta</button>
+                      </div>
+
+                      {selectedForm.questions.length === 0 ? (
+                        <p className="form-desc">Este formulario no tiene preguntas.</p>
+                      ) : (
+                        <div className="questions-editor-list">
+                          {selectedForm.questions.map((q, index) => (
+                            <div key={q.id} className="question-editor-card">
+                              <div className="card-header" style={{ alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <input
+                                    type="text" className="form-input label-input" value={q.label}
+                                    onChange={(e) => handleQuestionUpdate(q.id, { label: e.target.value })}
+                                  />
+                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    {q.required && <span className="node-badge badge-required">Obligatorio</span>}
+                                    {q.condition && (
+                                      <span className="node-badge badge-conditional-q" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                        Condicional
+                                        <span style={{ fontWeight: 'bold', opacity: 0.8, fontSize: '0.63rem' }}>
+                                          (Depende de: {selectedForm.questions.find(pq => pq.id === q.condition!.questionId)?.label || 'Desconocida'})
+                                        </span>
                                       </span>
-                                    </span>
-                                  )}
-                                  {q.isSensitive && <span className="node-badge badge-sensitive">Info Sensible</span>}
+                                    )}
+                                    {q.isSensitive && <span className="node-badge badge-sensitive">Info Sensible</span>}
+                                  </div>
                                 </div>
-                              </div>
-                              <button className="btn-icon danger" onClick={() => handleDeleteQuestion(q.id)} style={{ marginTop: '2px' }}>🗑</button>
-                            </div>
-
-                            <div className="card-body">
-                              <div className="field-group">
-                                <label>Tipo:</label>
-                                <select
-                                  className="form-input" value={q.type}
-                                  onChange={(e) => handleQuestionUpdate(q.id, { type: e.target.value as QuestionType })}
-                                >
-                                  <option value="text">Texto corto</option>
-                                  <option value="textarea">Texto largo</option>
-                                  <option value="number">Número</option>
-                                  <option value="dropdown">Desplegable</option>
-                                  <option value="radio">Radio buttons</option>
-                                  <option value="checkbox">Checkbox</option>
-                                </select>
+                                <button className="btn-icon danger" onClick={() => handleDeleteQuestion(q.id)} style={{ marginTop: '2px' }}>🗑</button>
                               </div>
 
+                              <div className="card-body">
+                                <div className="field-group">
+                                  <label style={{ fontWeight: 'bold', color: 'black', marginBottom: '2px' }}>Tipo:</label>
+                                  <select style={{ marginRight: '25px', paddingRight: '10px' }}
+                                    className="form-input" value={q.type}
+                                    onChange={(e) => handleQuestionUpdate(q.id, { type: e.target.value as QuestionType })}
+                                  >
+                                    <option value="text">Texto corto</option>
+                                    <option value="textarea">Texto largo</option>
+                                    <option value="number">Número</option>
+                                    <option value="dropdown">Desplegable</option>
+                                    <option value="radio">Radio buttons</option>
+                                    <option value="checkbox">Checkbox</option>
+                                  </select>
+                                </div>
+
+
+
+                                {index > 0 && (
+                                  <div className="field-group" style={{ display: 'block', width: '100%' }}>
+                                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '8px', display: 'block' }}>Visibilidad Condicional</label>
+                                    <select
+                                      className="form-input"
+                                      style={{ marginBottom: '8px' }}
+                                      value={q.condition ? q.condition.questionId : ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (!val) {
+                                          handleQuestionUpdate(q.id, { condition: undefined });
+                                        } else {
+                                          handleQuestionUpdate(q.id, {
+                                            condition: { questionId: val, operator: 'equals', value: '' }
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <option value="">-- Siempre visible --</option>
+                                      {selectedForm.questions.slice(0, index).map(prevQ => (
+                                        <option key={prevQ.id} value={prevQ.id}>Mostrar si responde a: {prevQ.label}</option>
+                                      ))}
+                                    </select>
+
+                                    {q.condition && (
+                                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <select
+                                          className="form-input"
+                                          style={{ flex: 1 }}
+                                          value={q.condition.operator}
+                                          onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, operator: e.target.value as any } })}
+                                        >
+                                          <option value="equals">Es igual a</option>
+                                          <option value="not_equals">No es igual a</option>
+                                          <option value="contains">Contiene</option>
+                                          {(() => {
+                                            const targetQ = selectedForm.questions.find(pq => pq.id === q.condition?.questionId);
+                                            if (targetQ && targetQ.type === 'number') {
+                                              return (
+                                                <>
+                                                  <option value="greater_than">Mayor que (&gt;)</option>
+                                                  <option value="less_than">Menor que (&lt;)</option>
+                                                </>
+                                              );
+                                            }
+                                            return null;
+                                          })()}
+                                        </select>
+
+                                        {(() => {
+                                          const targetQ = selectedForm.questions.find(pq => pq.id === q.condition?.questionId);
+                                          if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
+                                            return (
+                                              <select
+                                                className="form-input"
+                                                style={{ flex: 1 }}
+                                                value={q.condition.value}
+                                                onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, value: e.target.value } })}
+                                              >
+                                                <option value="">-- Valor esperado --</option>
+                                                {targetQ.options.map(opt => (
+                                                  <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                              </select>
+                                            );
+                                          }
+                                          return (
+                                            <input
+                                              type="text"
+                                              className="form-input"
+                                              style={{ flex: 1 }}
+                                              placeholder="Valor esperado..."
+                                              value={q.condition.value}
+                                              onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, value: e.target.value } })}
+                                            />
+                                          );
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                               <div className="field-group row-align" style={{ gap: '20px', alignItems: 'center', display: 'flex' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <input
@@ -236,184 +387,101 @@ export const FormLibraryView = () => {
                                   <label htmlFor={`sens-${q.id}`} style={{ marginBottom: 0 }}>Info Sensible</label>
                                 </div>
                               </div>
+                              {(q.type === 'dropdown' || q.type === 'radio' || q.type === 'checkbox') && (
+                                <div className="options-editor">
+                                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Opciones del Campo</label>
 
-                              {index > 0 && (
-                                <div className="field-group" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed var(--panel-border)', display: 'block' }}>
-                                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '8px', display: 'block' }}>Visibilidad Condicional</label>
-                                  <select
-                                    className="form-input"
-                                    style={{ marginBottom: '8px' }}
-                                    value={q.condition ? q.condition.questionId : ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      if (!val) {
-                                        handleQuestionUpdate(q.id, { condition: undefined });
-                                      } else {
-                                        handleQuestionUpdate(q.id, {
-                                          condition: { questionId: val, operator: 'equals', value: '' }
-                                        });
-                                      }
-                                    }}
-                                  >
-                                    <option value="">-- Siempre visible --</option>
-                                    {selectedForm.questions.slice(0, index).map(prevQ => (
-                                      <option key={prevQ.id} value={prevQ.id}>Mostrar si responde a: {prevQ.label}</option>
-                                    ))}
-                                  </select>
-
-                                  {q.condition && (
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                      <select
-                                        className="form-input"
-                                        style={{ flex: 1 }}
-                                        value={q.condition.operator}
-                                        onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, operator: e.target.value as any } })}
-                                      >
-                                        <option value="equals">Es igual a</option>
-                                        <option value="not_equals">No es igual a</option>
-                                        <option value="contains">Contiene</option>
-                                        {(() => {
-                                          const targetQ = selectedForm.questions.find(pq => pq.id === q.condition?.questionId);
-                                          if (targetQ && targetQ.type === 'number') {
-                                            return (
-                                              <>
-                                                <option value="greater_than">Mayor que (&gt;)</option>
-                                                <option value="less_than">Menor que (&lt;)</option>
-                                              </>
-                                            );
-                                          }
-                                          return null;
-                                        })()}
-                                      </select>
-
-                                      {(() => {
-                                        const targetQ = selectedForm.questions.find(pq => pq.id === q.condition?.questionId);
-                                        if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
-                                          return (
-                                            <select
-                                              className="form-input"
-                                              style={{ flex: 1 }}
-                                              value={q.condition.value}
-                                              onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, value: e.target.value } })}
-                                            >
-                                              <option value="">-- Valor esperado --</option>
-                                              {targetQ.options.map(opt => (
-                                                <option key={opt} value={opt}>{opt}</option>
-                                              ))}
-                                            </select>
-                                          );
-                                        }
-                                        return (
-                                          <input
-                                            type="text"
-                                            className="form-input"
-                                            style={{ flex: 1 }}
-                                            placeholder="Valor esperado..."
-                                            value={q.condition.value}
-                                            onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, value: e.target.value } })}
-                                          />
-                                        );
-                                      })()}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {(q.type === 'dropdown' || q.type === 'radio' || q.type === 'checkbox') && (
-                              <div className="options-editor">
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Opciones del Campo</label>
-                                
-                                {/* Lista de tags/píldoras existentes */}
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
-                                  {(q.options || []).map((opt, optIndex) => (
-                                    <div 
-                                      key={optIndex} 
-                                      className="multiselect-pill" 
-                                      style={{ 
-                                        display: 'inline-flex', 
-                                        alignItems: 'center', 
-                                        gap: '6px', 
-                                        backgroundColor: 'var(--panel-border)', 
-                                        border: '1px solid rgba(59, 130, 246, 0.2)',
-                                        color: 'var(--text-main)', 
-                                        padding: '4px 10px', 
-                                        borderRadius: '16px',
-                                        fontSize: '0.85rem'
-                                      }}
-                                    >
-                                      <span>{opt}</span>
-                                      <span 
-                                        className="pill-remove" 
-                                        onClick={() => {
-                                          const newOpts = (q.options || []).filter((_, i) => i !== optIndex);
-                                          handleQuestionUpdate(q.id, { options: newOpts });
+                                  {/* Lista de tags/píldoras existentes */}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                                    {(q.options || []).map((opt, optIndex) => (
+                                      <div
+                                        key={optIndex}
+                                        className="multiselect-pill"
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          backgroundColor: 'var(--panel-border)',
+                                          border: '1px solid rgba(59, 130, 246, 0.2)',
+                                          color: 'var(--text-main)',
+                                          padding: '4px 10px',
+                                          borderRadius: '16px',
+                                          fontSize: '0.85rem'
                                         }}
-                                        style={{ cursor: 'pointer', fontWeight: 'bold', color: 'var(--text-muted)' }}
-                                        title="Eliminar opción"
                                       >
-                                        ×
+                                        <span>{opt}</span>
+                                        <span
+                                          className="pill-remove"
+                                          onClick={() => {
+                                            const newOpts = (q.options || []).filter((_, i) => i !== optIndex);
+                                            handleQuestionUpdate(q.id, { options: newOpts });
+                                          }}
+                                          style={{ cursor: 'pointer', fontWeight: 'bold', color: 'var(--text-muted)' }}
+                                          title="Eliminar opción"
+                                        >
+                                          ×
+                                        </span>
+                                      </div>
+                                    ))}
+                                    {(q.options || []).length === 0 && (
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                        No hay opciones definidas. Añade una abajo.
                                       </span>
-                                    </div>
-                                  ))}
-                                  {(q.options || []).length === 0 && (
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                      No hay opciones definidas. Añade una abajo.
-                                    </span>
-                                  )}
-                                </div>
+                                    )}
+                                  </div>
 
-                                {/* Campo para añadir una nueva opción */}
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Escribe una opción y presiona Enter..."
-                                    id={`new-opt-input-${q.id}`}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        const target = e.currentTarget;
-                                        const val = target.value.trim();
+                                  {/* Campo para añadir una nueva opción */}
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input
+                                      type="text"
+                                      className="form-input"
+                                      placeholder="Escribe una opción y presiona Enter..."
+                                      id={`new-opt-input-${q.id}`}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          const target = e.currentTarget;
+                                          const val = target.value.trim();
+                                          if (val) {
+                                            const currentOpts = q.options || [];
+                                            if (!currentOpts.includes(val)) {
+                                              handleQuestionUpdate(q.id, { options: [...currentOpts, val] });
+                                            }
+                                            target.value = '';
+                                          }
+                                        }
+                                      }}
+                                      style={{ flex: 1 }}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="btn-secondary"
+                                      onClick={() => {
+                                        const inputEl = document.getElementById(`new-opt-input-${q.id}`) as HTMLInputElement;
+                                        const val = inputEl ? inputEl.value.trim() : '';
                                         if (val) {
                                           const currentOpts = q.options || [];
                                           if (!currentOpts.includes(val)) {
                                             handleQuestionUpdate(q.id, { options: [...currentOpts, val] });
                                           }
-                                          target.value = '';
+                                          inputEl.value = '';
                                         }
-                                      }
-                                    }}
-                                    style={{ flex: 1 }}
-                                  />
-                                  <button
-                                    type="button"
-                                    className="btn-secondary"
-                                    onClick={() => {
-                                      const inputEl = document.getElementById(`new-opt-input-${q.id}`) as HTMLInputElement;
-                                      const val = inputEl ? inputEl.value.trim() : '';
-                                      if (val) {
-                                        const currentOpts = q.options || [];
-                                        if (!currentOpts.includes(val)) {
-                                          handleQuestionUpdate(q.id, { options: [...currentOpts, val] });
-                                        }
-                                        inputEl.value = '';
-                                      }
-                                    }}
-                                    style={{ padding: '0 15px', height: '38px', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}
-                                  >
-                                    Añadir
-                                  </button>
+                                      }}
+                                      style={{ padding: '0 15px', height: '38px', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}
+                                    >
+                                      Añadir
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </Panel>
 
@@ -506,6 +574,6 @@ export const FormLibraryView = () => {
           )}
         </PanelGroup>
       </div>
-    </div>
+    </div >
   );
 };

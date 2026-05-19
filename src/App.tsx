@@ -43,10 +43,10 @@ function App() {
           </button>
 
           <button
-            className={showJson ? "btn-secondary" : "btn-primary"}
+            className={`btn-discreet ${showJson ? 'active' : ''}`}
             onClick={() => setShowJson(!showJson)}
           >
-            {showJson ? 'Ocultar JSON' : 'Mostrar JSON'}
+            {showJson ? '🎨 Normal' : '💻 Dev'}
           </button>
         </div>
       </header>
@@ -64,11 +64,11 @@ function App() {
 
           {currentView === 'flow' ? (
             <>
-              <Panel defaultSize={50} minSize={30}>
+              <Panel defaultSize={45} minSize={30}>
                 <WorkflowCanvas />
               </Panel>
               <ResizeHandle />
-              <Panel defaultSize={25} minSize={15}>
+              <Panel defaultSize={30} minSize={15}>
                 <TaskEditorView />
               </Panel>
             </>
