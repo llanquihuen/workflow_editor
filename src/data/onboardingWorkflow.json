@@ -1,0 +1,286 @@
+{
+  "id": "wf002",
+  "name": "Employee Onboarding and Equipment Provisioning",
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "General Employee Information",
+      "order": 1,
+      "formIds": [
+        "form-employee-info"
+      ],
+      "approverIds": [
+        "usr-3"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 50
+      }
+    },
+    {
+      "id": "task-2",
+      "name": "Remote Work Agreement & Shipping",
+      "order": 2,
+      "formIds": [
+        "form-remote-agreement"
+      ],
+      "approverIds": [
+        "usr-3"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-employee-info",
+        "questionId": "q-remote",
+        "operator": "equals",
+        "value": "Yes"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 200
+      }
+    },
+    {
+      "id": "task-3",
+      "name": "Developer Environment Provisioning",
+      "order": 3,
+      "formIds": [
+        "form-dev-setup"
+      ],
+      "approverIds": [
+        "usr-4"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-employee-info",
+        "questionId": "q-role",
+        "operator": "equals",
+        "value": "Software Engineer"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 350
+      }
+    },
+    {
+      "id": "task-4",
+      "name": "Financial Compliance & Background Check",
+      "order": 4,
+      "formIds": [
+        "form-financial-check"
+      ],
+      "approverIds": [
+        "usr-2",
+        "usr-17"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-employee-info",
+        "questionId": "q-department",
+        "operator": "equals",
+        "value": "Finance"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 500
+      }
+    },
+    {
+      "id": "task-5",
+      "name": "Office Seat Allocation & Access Badge",
+      "order": 5,
+      "formIds": [
+        "form-office-badge"
+      ],
+      "approverIds": [
+        "usr-5"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-employee-info",
+        "questionId": "q-remote",
+        "operator": "equals",
+        "value": "No"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 650
+      }
+    },
+    {
+      "id": "task-6",
+      "name": "HR & Operations Final Sign-off",
+      "order": 6,
+      "approverIds": [
+        "usr-3",
+        "usr-5",
+        "usr-20"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 800
+      }
+    }
+  ],
+  "forms": [
+    {
+      "id": "form-employee-info",
+      "title": "Employee Profile Information",
+      "description": "Standard registration form for personal details and role designation.",
+      "questions": [
+        {
+          "id": "q-fullname",
+          "type": "text",
+          "label": "Full Name",
+          "required": true
+        },
+        {
+          "id": "q-department",
+          "type": "dropdown",
+          "label": "Department Name",
+          "options": [
+            "Engineering",
+            "Finance",
+            "Operations",
+            "Marketing"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-role",
+          "type": "dropdown",
+          "label": "Job Title / Role",
+          "options": [
+            "Software Engineer",
+            "Financial Analyst",
+            "Operations Associate",
+            "Marketing Specialist"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-remote",
+          "type": "dropdown",
+          "label": "Will this employee work remotely?",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-remote-agreement",
+      "title": "Remote Work & Hardware Shipping",
+      "description": "Information required to ship office equipment and sign home-office agreements.",
+      "questions": [
+        {
+          "id": "q-shipping-address",
+          "type": "textarea",
+          "label": "Home Delivery Address",
+          "required": true
+        },
+        {
+          "id": "q-shipping-phone",
+          "type": "text",
+          "label": "Contact Phone Number",
+          "required": true
+        },
+        {
+          "id": "q-desk-needed",
+          "type": "dropdown",
+          "label": "Do you need an ergonomic desk and chair shipped?",
+          "options": [
+            "Yes, full desk & chair bundle",
+            "No, I have my own setup"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-dev-setup",
+      "title": "Developer Machine & Tooling Preferences",
+      "description": "Configuration inputs for building developer laptops and setting permissions.",
+      "questions": [
+        {
+          "id": "q-dev-laptop",
+          "type": "dropdown",
+          "label": "Developer Hardware Option",
+          "options": [
+            "MacBook Pro 16\" (M3 Max, 64GB RAM)",
+            "ThinkPad P16 (Intel i9, 64GB RAM, Linux)"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-github-handle",
+          "type": "text",
+          "label": "GitHub Username",
+          "required": true
+        },
+        {
+          "id": "q-aws-access",
+          "type": "dropdown",
+          "label": "Do you require AWS sandbox access?",
+          "options": [
+            "Yes, Full Admin Sandbox",
+            "No, Read-Only Console"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-financial-check",
+      "title": "Financial Integrity Compliance",
+      "description": "Mandatory background disclosure for members of the financial audit department.",
+      "questions": [
+        {
+          "id": "q-compliance-check",
+          "type": "dropdown",
+          "label": "Have you completed the NDA and conflict of interest disclosures?",
+          "options": [
+            "Yes, fully signed",
+            "No, pending signature"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-previous-firm",
+          "type": "text",
+          "label": "Please disclose any financial firms worked at in the last 12 months",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-office-badge",
+      "title": "Office Desk & Security Access Card",
+      "description": "For hybrid/on-premise workers. Security photo and desk assignment details.",
+      "questions": [
+        {
+          "id": "q-office-location",
+          "type": "dropdown",
+          "label": "Assigned Office Base",
+          "options": [
+            "New York HQ - Floor 4",
+            "London Office - Floor 1",
+            "Tokyo Hub - Floor 6"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-badge-photo",
+          "type": "dropdown",
+          "label": "Have you uploaded a high-resolution ID photo for your access card?",
+          "options": [
+            "Yes, uploaded to portal",
+            "No, scheduled on first day"
+          ],
+          "required": true
+        }
+      ]
+    }
+  ]
+}

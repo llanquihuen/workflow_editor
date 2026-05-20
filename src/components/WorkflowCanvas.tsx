@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ReactFlow,
   Controls,
@@ -53,6 +54,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
 };
 
 const WorkflowCanvasContent = () => {
+  const { t } = useTranslation();
   const {
     workflow,
     setSelectedTask,
@@ -64,6 +66,20 @@ const WorkflowCanvasContent = () => {
   } = useWorkflowStore();
 
   const { fitView } = useReactFlow();
+
+  const getConditionLabel = useCallback((condition: any, prefix: string) => {
+    const form = (workflow.forms || []).find(f => f.id === condition.formId);
+    const question = form?.questions.find(q => q.id === condition.questionId);
+    if (!question) return t('common.conditional');
+
+    let opText = '==';
+    if (condition.operator === 'not_equals') opText = '!=';
+    if (condition.operator === 'contains') opText = t('forms.operators.contains').toLowerCase();
+    if (condition.operator === 'greater_than') opText = '>';
+    if (condition.operator === 'less_than') opText = '<';
+
+    return `${prefix} ${question.label} ${opText} ${condition.value}`;
+  }, [workflow.forms, t]);
 
   const rawNodes: Node[] = useMemo(() => {
     return workflow.tasks.map((task) => {
@@ -86,12 +102,14 @@ const WorkflowCanvasContent = () => {
           formTitles: formTitles,
           approvers: approverNames,
           condition: task.condition,
+          skipCondition: task.skipCondition,
+          skipLabel: task.skipCondition ? getConditionLabel(task.skipCondition, t('canvas.skip_if')) : null,
           order: task.order
         },
         selected: selectedTaskId === task.id
       };
     });
-  }, [workflow.tasks, workflow.forms, selectedTaskId]);
+  }, [workflow.tasks, workflow.forms, selectedTaskId, getConditionLabel, t]);
 
   const rawEdges: Edge[] = useMemo(() => {
     const edges: Edge[] = [];
@@ -112,6 +130,7 @@ const WorkflowCanvasContent = () => {
     for (let i = 1; i < workflow.tasks.length; i++) {
       const targetTask = workflow.tasks[i];
       const isConditional = !!targetTask.condition;
+      const isSkipTarget = !!targetTask.skipCondition;
 
       if (isConditional) {
         let sourceId = '';
@@ -138,14 +157,9 @@ const WorkflowCanvasContent = () => {
           const form = (workflow.forms || []).find(f => f.id === targetTask.condition!.formId);
           const question = form?.questions.find(q => q.id === targetTask.condition!.questionId);
           if (question) {
-            let opText = '==';
-            if (targetTask.condition!.operator === 'not_equals') opText = '!=';
-            if (targetTask.condition!.operator === 'contains') opText = 'contiene';
-            if (targetTask.condition!.operator === 'greater_than') opText = '>';
-            if (targetTask.condition!.operator === 'less_than') opText = '<';
-            label = `Si ${question.label} ${opText} ${targetTask.condition!.value}`;
+            label = getConditionLabel(targetTask.condition!, t('canvas.if'));
           } else {
-            label = 'Condicional';
+            label = t('common.conditional');
           }
         }
 
@@ -154,10 +168,20 @@ const WorkflowCanvasContent = () => {
           source: sourceId,
           target: targetTask.id,
           animated: true,
-          label: label,
-          style: { stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '5,5' },
-          labelBgStyle: label ? { fill: 'var(--panel-bg)', fillOpacity: 0.9 } : undefined,
-          labelStyle: label ? { fill: 'var(--text-main)', fontWeight: 600, fontSize: 10 } : undefined,
+          label: isSkipTarget
+            ? getConditionLabel(targetTask.skipCondition!, t('canvas.skip_if'))
+            : label,
+          style: {
+            stroke: '#fbbf24',
+            strokeWidth: 2,
+            strokeDasharray: isSkipTarget ? '1,6' : '5,5',
+            strokeLinecap: isSkipTarget ? 'round' : undefined,
+          },
+          labelShowBg: !!(label || isSkipTarget),
+          labelBgPadding: (label || isSkipTarget) ? [6, 3] : undefined,
+          labelBgBorderRadius: (label || isSkipTarget) ? 4 : undefined,
+          labelBgStyle: (label || isSkipTarget) ? { fill: '#ffffff', fillOpacity: 0.95 } : undefined,
+          labelStyle: (label || isSkipTarget) ? { fill: '#111827', fontWeight: 700, fontSize: 11 } : undefined,
         });
 
         if (sourceHasSameCondition) {
@@ -181,16 +205,30 @@ const WorkflowCanvasContent = () => {
             source: leafId,
             target: targetTask.id,
             animated: false,
-            style: { stroke: 'var(--edge-stroke)', strokeWidth: 2 },
+            label: isSkipTarget
+              ? getConditionLabel(targetTask.skipCondition!, t('canvas.skip_if'))
+              : undefined,
+            style: {
+              stroke: 'var(--edge-stroke)',
+              strokeWidth: 2,
+              strokeDasharray: isSkipTarget ? '1,6' : undefined,
+              strokeLinecap: isSkipTarget ? 'round' : undefined,
+            },
+            labelShowBg: isSkipTarget,
+            labelBgPadding: isSkipTarget ? [6, 3] : undefined,
+            labelBgBorderRadius: isSkipTarget ? 4 : undefined,
+            labelBgStyle: isSkipTarget ? { fill: '#ffffff', fillOpacity: 0.95 } : undefined,
+            labelStyle: isSkipTarget ? { fill: '#111827', fontWeight: 700, fontSize: 11 } : undefined,
           });
         });
 
         // Esta tarea consume todas las ramas
         uncoveredLeaves = [targetTask.id];
       }
+
     }
     return edges;
-  }, [workflow.tasks, workflow.forms]);
+  }, [workflow.tasks, workflow.forms, getConditionLabel, t]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(rawNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
@@ -258,7 +296,7 @@ const WorkflowCanvasContent = () => {
   };
 
   const handleAddNewTask = () => {
-    let baseName = 'Nueva Tarea';
+    let baseName = t('tasks.new_task');
     let newName = baseName;
     let counter = 1;
     while (isDuplicateTaskName(newName)) {
@@ -278,10 +316,10 @@ const WorkflowCanvasContent = () => {
   return (
     <div className="panel-container canvas-panel" style={{ position: 'relative' }}>
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Canvas Visual</h3>
+        <h3>{t('canvas.title')}</h3>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn-small" style={{ backgroundColor: '#475569' }} onClick={handleAutoLayout}>✨ Auto-Ordenar</button>
-          <button className="btn-small" onClick={handleAddNewTask}>+ Añadir Tarea</button>
+          <button className="btn-small" style={{ backgroundColor: '#475569' }} onClick={handleAutoLayout}>✨ {t('canvas.auto_layout')}</button>
+          <button className="btn-small" onClick={handleAddNewTask}>{t('tasks.add_task')}</button>
         </div>
       </div>
       <div className="panel-content" style={{ padding: 0 }}>

@@ -1,0 +1,262 @@
+{
+  "id": "wf003",
+  "name": "Software Release Deployment Gate",
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "Release Risk Assessment",
+      "order": 1,
+      "formIds": [
+        "form-release-risk"
+      ],
+      "approverIds": [
+        "usr-14"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 50
+      }
+    },
+    {
+      "id": "task-2",
+      "name": "Deep Security & Penetration Review",
+      "order": 2,
+      "formIds": [
+        "form-security-pen"
+      ],
+      "approverIds": [
+        "usr-16"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-release-risk",
+        "questionId": "q-risk-level",
+        "operator": "equals",
+        "value": "High Risk"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 200
+      }
+    },
+    {
+      "id": "task-3",
+      "name": "Database Schema Migration Gate",
+      "order": 3,
+      "formIds": [
+        "form-database-migration"
+      ],
+      "approverIds": [
+        "usr-4"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-release-risk",
+        "questionId": "q-db-migration",
+        "operator": "equals",
+        "value": "Yes"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 350
+      }
+    },
+    {
+      "id": "task-4",
+      "name": "Customer Communications & Release Notes",
+      "order": 4,
+      "formIds": [
+        "form-release-comms"
+      ],
+      "approverIds": [
+        "usr-7"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-release-risk",
+        "questionId": "q-breaking-changes",
+        "operator": "equals",
+        "value": "Yes"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 500
+      }
+    },
+    {
+      "id": "task-5",
+      "name": "Quality Assurance Verification",
+      "order": 5,
+      "formIds": [
+        "form-qa-verification"
+      ],
+      "approverIds": [
+        "usr-12"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 650
+      }
+    },
+    {
+      "id": "task-6",
+      "name": "Final Production Deployment Gate",
+      "order": 6,
+      "approverIds": [
+        "usr-14",
+        "usr-16",
+        "usr-20"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 800
+      }
+    }
+  ],
+  "forms": [
+    {
+      "id": "form-release-risk",
+      "title": "Release Properties & Risk Metrics",
+      "description": "Initial classification of the release package to trigger audit conditions.",
+      "questions": [
+        {
+          "id": "q-version-tag",
+          "type": "text",
+          "label": "Release Version Tag (e.g. v2.4.0)",
+          "required": true
+        },
+        {
+          "id": "q-risk-level",
+          "type": "dropdown",
+          "label": "Assessed Risk Level",
+          "options": [
+            "Low Risk",
+            "Medium Risk",
+            "High Risk"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-db-migration",
+          "type": "dropdown",
+          "label": "Are there database schema migrations?",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-breaking-changes",
+          "type": "dropdown",
+          "label": "Does this introduce user-facing breaking changes?",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-security-pen",
+      "title": "High Risk Penetration Testing Review",
+      "description": "Mandatory security check. Disclose audit and pen-testing logs.",
+      "questions": [
+        {
+          "id": "q-security-scan-url",
+          "type": "text",
+          "label": "Link to Security Scan Artifacts",
+          "required": true
+        },
+        {
+          "id": "q-vulnerabilities-open",
+          "type": "dropdown",
+          "label": "Are there any open vulnerabilities?",
+          "options": [
+            "None",
+            "Yes, Low-severity only (Accepted)",
+            "Yes, High-severity (Blocker)"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-database-migration",
+      "title": "Database Schema Review",
+      "description": "Information regarding script safety, rolling back, and backup verification.",
+      "questions": [
+        {
+          "id": "q-rollback-plan",
+          "type": "textarea",
+          "label": "Detailed Migration Rollback Script/Strategy",
+          "required": true
+        },
+        {
+          "id": "q-estimated-downtime",
+          "type": "dropdown",
+          "label": "Expected Database Lock / Downtime",
+          "options": [
+            "Zero downtime (Online migration)",
+            "Under 5 minutes",
+            "5 to 30 minutes (Maintenance window required)"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-release-comms",
+      "title": "Marketing and Support Comms Prep",
+      "description": "Drafting announcement emails and preparing customer care staff for breaking flows.",
+      "questions": [
+        {
+          "id": "q-notes-url",
+          "type": "text",
+          "label": "Link to Draft Release Blog/Change Log",
+          "required": true
+        },
+        {
+          "id": "q-support-briefed",
+          "type": "dropdown",
+          "label": "Has Customer Support been briefed on this change?",
+          "options": [
+            "Yes, support team has reviewed documentation",
+            "No, support team has not yet been notified"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-qa-verification",
+      "title": "QA Test Suite Execution",
+      "description": "Logs and results from internal staging environment verification tests.",
+      "questions": [
+        {
+          "id": "q-qa-status",
+          "type": "dropdown",
+          "label": "Staging Automation Suite Status",
+          "options": [
+            "100% Passed (Clean Build)",
+            "Passed with minor test exclusions",
+            "Failed tests outstanding"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-browser-tested",
+          "type": "checkbox",
+          "label": "Tested Platforms",
+          "options": [
+            "Desktop Browsers (Chrome/Safari/Firefox)",
+            "Mobile Web (iOS/Android)",
+            "Native Apps (iOS/Android)"
+          ],
+          "required": true
+        }
+      ]
+    }
+  ]
+}

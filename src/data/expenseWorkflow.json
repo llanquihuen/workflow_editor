@@ -1,0 +1,263 @@
+{
+  "id": "wf004",
+  "name": "Corporate Travel and Expense Claim",
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "Travel Plan & Budget Estimates",
+      "order": 1,
+      "formIds": [
+        "form-travel-estimates"
+      ],
+      "approverIds": [
+        "usr-18"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 50
+      }
+    },
+    {
+      "id": "task-2",
+      "name": "International Cash Advance & Insurance",
+      "order": 2,
+      "formIds": [
+        "form-intl-advance"
+      ],
+      "approverIds": [
+        "usr-8"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-travel-estimates",
+        "questionId": "q-travel-type",
+        "operator": "equals",
+        "value": "International"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 200
+      }
+    },
+    {
+      "id": "task-3",
+      "name": "Companion Policy & Compliance",
+      "order": 3,
+      "formIds": [
+        "form-companion-details"
+      ],
+      "approverIds": [
+        "usr-10"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-travel-estimates",
+        "questionId": "q-family-travel",
+        "operator": "equals",
+        "value": "Yes"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 350
+      }
+    },
+    {
+      "id": "task-4",
+      "name": "High Expense Audit & Business Case",
+      "order": 4,
+      "formIds": [
+        "form-budget-audit"
+      ],
+      "approverIds": [
+        "usr-2",
+        "usr-17"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-travel-estimates",
+        "questionId": "q-est-cost",
+        "operator": "greater_than",
+        "value": "5000"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 500
+      }
+    },
+    {
+      "id": "task-5",
+      "name": "Hotel and Flight Ticket Bookings",
+      "order": 5,
+      "formIds": [
+        "form-travel-booking"
+      ],
+      "approverIds": [
+        "usr-8"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 650
+      }
+    },
+    {
+      "id": "task-6",
+      "name": "Finance & Executive Final Approval",
+      "order": 6,
+      "approverIds": [
+        "usr-2",
+        "usr-5",
+        "usr-20"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 800
+      }
+    }
+  ],
+  "forms": [
+    {
+      "id": "form-travel-estimates",
+      "title": "Initial Travel Estimates",
+      "description": "Information regarding flight estimates, lodging type, and companion status.",
+      "questions": [
+        {
+          "id": "q-employee-traveler",
+          "type": "text",
+          "label": "Traveler Name",
+          "required": true
+        },
+        {
+          "id": "q-travel-type",
+          "type": "dropdown",
+          "label": "Travel Scope",
+          "options": [
+            "Domestic",
+            "International"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-est-cost",
+          "type": "number",
+          "label": "Estimated Travel Budget (USD)",
+          "required": true
+        },
+        {
+          "id": "q-family-travel",
+          "type": "dropdown",
+          "label": "Are family members or companions traveling with you?",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-intl-advance",
+      "title": "International Cash Advance Request",
+      "description": "Cash advance, visa paperwork, and travel medical insurance verification.",
+      "questions": [
+        {
+          "id": "q-advance-amt",
+          "type": "number",
+          "label": "Requested Cash Advance Amount (USD)",
+          "required": true
+        },
+        {
+          "id": "q-passport-num",
+          "type": "text",
+          "label": "Passport Number",
+          "required": true,
+          "isSensitive": true
+        },
+        {
+          "id": "q-medical-insure",
+          "type": "dropdown",
+          "label": "Do you need company-issued travel health insurance?",
+          "options": [
+            "Yes, issue new certificate",
+            "No, I have active personal/global coverage"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-companion-details",
+      "title": "Family / Companion Compliance Review",
+      "description": "Mandatory disclosure. Note that companion expenses are not covered by the company.",
+      "questions": [
+        {
+          "id": "q-companion-name",
+          "type": "text",
+          "label": "Full Name of Companion(s)",
+          "required": true
+        },
+        {
+          "id": "q-companion-self-fund",
+          "type": "dropdown",
+          "label": "Do you confirm companion flights and lodging are paid out-of-pocket?",
+          "options": [
+            "Yes, I confirm personal payment",
+            "No, requesting corporate exception"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-budget-audit",
+      "title": "High Budget Travel Justification",
+      "description": "Triggered for trips exceeding $5,000. Finance committee justification is required.",
+      "questions": [
+        {
+          "id": "q-reason-high-budget",
+          "type": "textarea",
+          "label": "Business Justification for High Budget",
+          "required": true
+        },
+        {
+          "id": "q-cheaper-alternatives",
+          "type": "dropdown",
+          "label": "Were cheaper flight/lodging options investigated?",
+          "options": [
+            "Yes, but they conflicted with critical business meetings",
+            "No, high budget is required for client representation"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-travel-booking",
+      "title": "Hotel and Travel Booking Form",
+      "description": "Final coordinates for logistics team to issue travel tickets and hotel rooms.",
+      "questions": [
+        {
+          "id": "q-departure-date",
+          "type": "text",
+          "label": "Departure Date (YYYY-MM-DD)",
+          "required": true
+        },
+        {
+          "id": "q-preferred-airline",
+          "type": "text",
+          "label": "Preferred Airline / Flight Codes",
+          "required": false
+        },
+        {
+          "id": "q-room-type",
+          "type": "dropdown",
+          "label": "Hotel Room Class Requested",
+          "options": [
+            "Standard Room (Corporate Rate)",
+            "Executive Suite (VP level and above)"
+          ],
+          "required": true
+        }
+      ]
+    }
+  ]
+}

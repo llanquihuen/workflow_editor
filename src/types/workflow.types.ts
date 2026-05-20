@@ -44,6 +44,7 @@ export interface Task {
   formIds?: string[];
   ui_metadata: UIMetadata;
   condition?: TaskCondition;
+  skipCondition?: TaskCondition;
 }
 
 export interface Workflow {
@@ -51,4 +52,10 @@ export interface Workflow {
   name: string;
   tasks: Task[];
   forms: Form[];
+  ownerId?: string;
+  updatedAt?: string;
+  version?: string;
+  rating?: number;
+  enabled?: boolean;
 }
+

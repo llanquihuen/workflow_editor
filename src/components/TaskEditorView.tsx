@@ -1,16 +1,39 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useWorkflowStore } from '../store/useWorkflowStore';
 import { DUMMY_USERS } from '../utils/constants';
-import type { FormQuestion } from '../types/workflow.types';
+import type { FormQuestion, TaskCondition } from '../types/workflow.types';
 
 export const TaskEditorView = () => {
-  const { workflow, selectedTaskId, setSelectedTask, updateTask, deleteTask, reorderTask } = useWorkflowStore();
+  const { t } = useTranslation();
+  const { workflow, selectedTaskId, setSelectedTask, updateTask, deleteTask, reorderTask, addTask } = useWorkflowStore();
   const [approverSearch, setApproverSearch] = useState('');
   const [showApproverDropdown, setShowApproverDropdown] = useState(false);
 
   const [formSearch, setFormSearch] = useState('');
   const [showFormDropdown, setShowFormDropdown] = useState(false);
   const [editingName, setEditingName] = useState<Record<string, string>>({});
+
+  const [showTaskDropdown, setShowTaskDropdown] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.custom-dropdown-container')) {
+        setShowTaskDropdown(false);
+      }
+    };
+
+    if (showTaskDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTaskDropdown]);
 
   const selectedTask = workflow.tasks.find((t) => t.id === selectedTaskId);
   const selectedIndex = workflow.tasks.findIndex((t) => t.id === selectedTaskId);
@@ -40,14 +63,14 @@ export const TaskEditorView = () => {
     });
   });
 
-  const handleConditionChange = (field: string, value: string) => {
+  const handleConditionChange = (conditionType: 'condition' | 'skipCondition', field: string, value: string) => {
     if (!selectedTask) return;
 
-    let currentCondition = selectedTask.condition;
+    let currentCondition = selectedTask[conditionType] as TaskCondition | undefined;
 
     if (field === 'question') {
       if (value === '') {
-        updateTask(selectedTask.id, { condition: undefined });
+        updateTask(selectedTask.id, { [conditionType]: undefined });
         return;
       }
       const [taskId, formId, questionId] = value.split('|');
@@ -62,11 +85,12 @@ export const TaskEditorView = () => {
       currentCondition = { ...currentCondition, [field]: value };
     }
 
-    updateTask(selectedTask.id, { condition: currentCondition });
+    updateTask(selectedTask.id, { [conditionType]: currentCondition });
   };
 
-  const handleTaskChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedTask(e.target.value === '' ? null : e.target.value);
+  const handleTaskChange = (taskId: string) => {
+    setSelectedTask(taskId === '' ? null : taskId);
+    setShowTaskDropdown(false);
   };
 
   const isDuplicateTaskName = (name: string, taskId?: string) => {
@@ -142,62 +166,241 @@ export const TaskEditorView = () => {
 
   const handleDeleteTask = () => {
     if (selectedTask) {
-      if (confirm(`¿Estás seguro de eliminar la tarea "${selectedTask.name}"?`)) {
+      if (confirm(t('tasks.delete_confirm', { name: selectedTask.name }))) {
         deleteTask(selectedTask.id);
       }
     }
   };
 
+  const handleAddNewTask = () => {
+    let baseName = t('tasks.new_task');
+    let newName = baseName;
+    let counter = 1;
+    while (isDuplicateTaskName(newName)) {
+      newName = `${baseName} ${counter}`;
+      counter++;
+    }
+
+    const newTask = {
+      id: `task-${Date.now()}`,
+      name: newName,
+      order: workflow.tasks.length + 1,
+      ui_metadata: { x: 0, y: 0 }
+    };
+    addTask(newTask);
+  };
+
   return (
     <div className="panel-container form-panel">
-      <div className="panel-header">
-        <h3>Editor de Tareas</h3>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3>{t('tasks.editor_title')}</h3>
+        <button className="btn-small" onClick={handleAddNewTask}>{t('tasks.add_task')}</button>
       </div>
 
       <div className="panel-content padded-content">
         <div className="task-selector">
-          <label>Seleccionar Tarea:</label>
-          <select className="form-input" value={selectedTaskId || ''} onChange={handleTaskChange}>
-            <option value="">-- Selecciona una tarea --</option>
-            {workflow.tasks.map(t => (
-              <option key={t.id} value={t.id}>{t.order}. {t.name}</option>
-            ))}
-          </select>
+          <label>{t('tasks.select_task')}</label>
+          <div className="custom-dropdown-container">
+            <button 
+              className={`custom-dropdown-trigger ${!selectedTask ? 'placeholder' : ''}`}
+              onClick={() => setShowTaskDropdown(!showTaskDropdown)}
+            >
+              <div className="trigger-content">
+                {selectedTask ? (
+                  <>
+                    <span className="task-order-badge">{selectedTask.order}</span>
+                    <span className="task-name-text">{selectedTask.name}</span>
+                  </>
+                ) : (
+                  <span className="placeholder-text">{t('tasks.select_task_placeholder')}</span>
+                )}
+              </div>
+              <span className={`dropdown-arrow ${showTaskDropdown ? 'open' : ''}`}>▼</span>
+            </button>
+
+            {showTaskDropdown && (
+              <div className="custom-dropdown-menu">
+                <div 
+                  className={`dropdown-item ${!selectedTaskId ? 'selected' : ''}`}
+                  onClick={() => handleTaskChange('')}
+                >
+                  <span className="placeholder-text">{t('tasks.select_task_placeholder')}</span>
+                </div>
+                {workflow.tasks.map(t => (
+                  <div 
+                    key={t.id} 
+                    className={`dropdown-item ${selectedTaskId === t.id ? 'selected' : ''}`}
+                    onClick={() => handleTaskChange(t.id)}
+                  >
+                    <span className="task-order-badge">{t.order}</span>
+                    <span className="task-name-text">{t.name}</span>
+                    {selectedTaskId === t.id && <span className="selected-check">✓</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {!selectedTask ? (
           <div className="empty-state" style={{ marginTop: '20px' }}>
-            <p>Selecciona una tarea del menú o haz clic en un nodo del canvas.</p>
+            <p>{t('tasks.empty_state')}</p>
           </div>
         ) : (
           <div className="editor-form">
 
-            <div className="editor-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
-              <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>Orden del Paso: {selectedTask.order}</span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className="btn-secondary btn-small"
-                  disabled={selectedIndex <= 1}
-                  onClick={() => reorderTask(selectedTask.id, 'up')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <span>⬆️</span> Subir
-                </button>
-                <button
-                  className="btn-secondary btn-small"
-                  disabled={selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1}
-                  onClick={() => reorderTask(selectedTask.id, 'down')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <span>⬇️</span> Bajar
-                </button>
-              </div>
-            </div>
-
             <div className="editor-section">
-              <h4>Configuración Básica</h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h4 style={{ margin: 0 }}>{t('tasks.basic_config')}</h4>
+
+
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* Indicador de Condiciones */}
+                  {selectedTask.condition ? (
+                      <div title={t('tasks.has_conditions_tooltip', { defaultValue: 'Tiene condiciones de activación' })} style={{
+                        display: 'flex',
+                        backgroundColor: 'rgba(255, 165, 0, 0.4)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--success)',
+                        padding: '3px 6px',
+                        borderRadius: '100px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'help'
+                      }}>
+                        🔀
+                      </div>
+                  ) : (
+                      <div></div>
+                  )}
+                  {/* Indicador de Skip */}
+                  {selectedTask.skipCondition ? (
+                    <div title={t('tasks.skip_condition')} style={{
+                      backgroundColor: 'rgba(255, 165, 0, 0.4)',
+                      borderRadius: '100px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--danger)',
+                      padding: '3px 3px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      cursor: 'help'
+                    }}>
+                      ⏭️
+                    </div>
+                  ) : (
+                    <div></div>
+                  )}
+                  {/* Control del Orden del Paso */}
+                  <div className="step-order-badge" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                    border: '1px solid rgba(59, 130, 246, 0.15)',
+                    padding: '5px 10px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    color: 'var(--primary)',
+                    fontWeight: '600'
+                  }}>
+                    <span style={{ fontWeight: '700' }}>Reorder tasks</span>
+                    <span>#{selectedTask.order}</span>
+                    <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }}>
+                      <button
+                        disabled={selectedIndex <= 1}
+                        onClick={() => reorderTask(selectedTask.id, 'up')}
+                        title={t('common.up')}
+                        style={{
+                          background: selectedIndex <= 1 ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.16)',
+                          border: '1px solid rgba(59, 130, 246, 0.35)',
+                          cursor: selectedIndex <= 1 ? 'not-allowed' : 'pointer',
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          opacity: selectedIndex <= 1 ? 0.3 : 1,
+                          color: 'var(--primary)',
+                          lineHeight: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '700'
+                        }}
+                      >
+                        ▲
+                      </button>
+                      <button
+                        disabled={selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1}
+                        onClick={() => reorderTask(selectedTask.id, 'down')}
+                        title={t('common.down')}
+                        style={{
+                          background: (selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1)
+                            ? 'rgba(59, 130, 246, 0.08)'
+                            : 'rgba(59, 130, 246, 0.16)',
+                          border: '1px solid rgba(59, 130, 246, 0.35)',
+                          cursor: (selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1) ? 'not-allowed' : 'pointer',
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          opacity: (selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1) ? 0.3 : 1,
+                          color: 'var(--primary)',
+                          lineHeight: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '700'
+                        }}
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+
+
+
+                  {/* Botón de Borrar Tarea */}
+                  {selectedIndex > 0 && (
+                    <button
+                      onClick={handleDeleteTask}
+                      title={t('tasks.delete_task')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.15)',
+                        color: 'var(--danger)',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        lineHeight: 1,
+                        fontWeight: '700',
+                        padding:'17px'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.15)';
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="editor-field">
-                <label>Nombre de la Tarea</label>
+                <label>{t('tasks.task_name')}</label>
                 <input
                   type="text"
                   className={`form-input ${editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) ? 'error' : ''}`}
@@ -208,12 +411,12 @@ export const TaskEditorView = () => {
                 />
                 {editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) && (
                   <span className="error-text" style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    Este nombre de tarea ya existe.
+                    {t('tasks.duplicate_name_error')}
                   </span>
                 )}
               </div>
               <div className="editor-field relative">
-                <label>Aprobadores</label>
+                <label>{t('tasks.approvers')}</label>
                 <div className="multiselect-container">
                   <div className="multiselect-pills">
                     {(selectedTask.approverIds || []).map(id => {
@@ -227,7 +430,7 @@ export const TaskEditorView = () => {
                     })}
                   </div>
                   <input
-                    type="text" className="form-input multiselect-input" placeholder="Buscar aprobador..."
+                    type="text" className="form-input multiselect-input" placeholder={t('tasks.search_approver')}
                     value={approverSearch}
                     onChange={(e) => { setApproverSearch(e.target.value); setShowApproverDropdown(true); }}
                     onFocus={() => setShowApproverDropdown(true)}
@@ -247,8 +450,8 @@ export const TaskEditorView = () => {
             </div>
 
             <div className="editor-section">
-              <h4>Formularios Vinculados</h4>
-              <p className="form-desc" style={{ marginBottom: '10px' }}>Selecciona uno o más formularios globales.</p>
+              <h4>{t('tasks.linked_forms')}</h4>
+              <p className="form-desc" style={{ marginBottom: '10px' }}>{t('tasks.select_global_forms')}</p>
 
               <div className="editor-field relative">
                 <div className="multiselect-container">
@@ -264,7 +467,7 @@ export const TaskEditorView = () => {
                     })}
                   </div>
                   <input
-                    type="text" className="form-input multiselect-input" placeholder="Buscar formulario..."
+                    type="text" className="form-input multiselect-input" placeholder={t('tasks.search_form')}
                     value={formSearch}
                     onChange={(e) => { setFormSearch(e.target.value); setShowFormDropdown(true); }}
                     onFocus={() => setShowFormDropdown(true)}
@@ -285,17 +488,17 @@ export const TaskEditorView = () => {
 
             {selectedIndex > 0 && (
               <div className="editor-section">
-                <h4>Condición de Activación</h4>
-                <p className="form-desc" style={{ marginBottom: '15px' }}>Selecciona una pregunta de un formulario previo para condicionar cuándo se ejecuta esta tarea.</p>
+                <h4>{t('tasks.activation_condition')}</h4>
+                <p className="form-desc" style={{ marginBottom: '15px' }}>{t('tasks.activation_desc')}</p>
 
                 <div className="editor-field">
-                  <label>Depende de la pregunta:</label>
+                  <label>{t('tasks.depends_on')}</label>
                   <select
                     className="form-input"
                     value={selectedTask.condition ? `${selectedTask.condition.dependentTaskId}|${selectedTask.condition.formId}|${selectedTask.condition.questionId}` : ''}
-                    onChange={(e) => handleConditionChange('question', e.target.value)}
+                    onChange={(e) => handleConditionChange('condition', 'question', e.target.value)}
                   >
-                    <option value="">-- Siempre ejecutar (Sin condición) --</option>
+                    <option value="">{t('tasks.always_execute')}</option>
                     {availableQuestions.map((item) => (
                       <option key={`${item.taskId}|${item.formId}|${item.question.id}`} value={`${item.taskId}|${item.formId}|${item.question.id}`}>
                         {item.taskName} &gt; {item.formTitle} &gt; {item.question.label}
@@ -307,22 +510,22 @@ export const TaskEditorView = () => {
                 {selectedTask.condition && (
                   <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                     <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
-                      <label>Operador</label>
+                      <label>{t('tasks.operator')}</label>
                       <select
                         className="form-input"
                         value={selectedTask.condition.operator}
-                        onChange={(e) => handleConditionChange('operator', e.target.value)}
+                        onChange={(e) => handleConditionChange('condition', 'operator', e.target.value)}
                       >
-                        <option value="equals">Es igual a</option>
-                        <option value="not_equals">No es igual a</option>
-                        <option value="contains">Contiene</option>
+                        <option value="equals">{t('forms.operators.equals')}</option>
+                        <option value="not_equals">{t('forms.operators.not_equals')}</option>
+                        <option value="contains">{t('forms.operators.contains')}</option>
                         {(() => {
                           const targetQ = availableQuestions.find(q => q.question.id === selectedTask.condition?.questionId)?.question;
                           if (targetQ && targetQ.type === 'number') {
                             return (
                               <>
-                                <option value="greater_than">Mayor que (&gt;)</option>
-                                <option value="less_than">Menor que (&lt;)</option>
+                                <option value="greater_than">{t('forms.operators.greater_than')}</option>
+                                <option value="less_than">{t('forms.operators.less_than')}</option>
                               </>
                             );
                           }
@@ -331,7 +534,7 @@ export const TaskEditorView = () => {
                       </select>
                     </div>
                     <div className="editor-field" style={{ flex: 2, marginBottom: 0 }}>
-                      <label>Valor esperado</label>
+                      <label>{t('tasks.expected_value')}</label>
                       {(() => {
                         const targetQ = availableQuestions.find(q => q.question.id === selectedTask.condition?.questionId)?.question;
                         if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
@@ -339,9 +542,9 @@ export const TaskEditorView = () => {
                             <select
                               className="form-input"
                               value={selectedTask.condition.value}
-                              onChange={(e) => handleConditionChange('value', e.target.value)}
+                              onChange={(e) => handleConditionChange('condition', 'value', e.target.value)}
                             >
-                              <option value="">-- Selecciona un valor --</option>
+                              <option value="">{t('common.select_option')}</option>
                               {targetQ.options.map(opt => (
                                 <option key={opt} value={opt}>{opt}</option>
                               ))}
@@ -352,9 +555,9 @@ export const TaskEditorView = () => {
                           <input
                             type="text"
                             className="form-input"
-                            placeholder="Escribe el valor..."
+                            placeholder={t('tasks.expected_value')}
                             value={selectedTask.condition.value}
-                            onChange={(e) => handleConditionChange('value', e.target.value)}
+                            onChange={(e) => handleConditionChange('condition', 'value', e.target.value)}
                           />
                         );
                       })()}
@@ -365,14 +568,83 @@ export const TaskEditorView = () => {
             )}
 
             {selectedIndex > 0 && (
-              <div className="editor-actions">
-                <button
-                  className="btn-primary"
-                  style={{ backgroundColor: 'var(--danger)', width: '100%', padding: '12px', fontWeight: 'bold', borderRadius: '6px' }}
-                  onClick={handleDeleteTask}
-                >
-                  🗑️ Eliminar Tarea
-                </button>
+              <div className="editor-section">
+                <h4>{t('tasks.skip_condition')}</h4>
+                <p className="form-desc" style={{ marginBottom: '15px' }}>{t('tasks.skip_desc')}</p>
+
+                <div className="editor-field">
+                  <label>{t('tasks.skip_depends_on')}</label>
+                  <select
+                    className="form-input"
+                    value={selectedTask.skipCondition ? `${selectedTask.skipCondition.dependentTaskId}|${selectedTask.skipCondition.formId}|${selectedTask.skipCondition.questionId}` : ''}
+                    onChange={(e) => handleConditionChange('skipCondition', 'question', e.target.value)}
+                  >
+                    <option value="">{t('tasks.never_skip')}</option>
+                    {availableQuestions.map((item) => (
+                      <option key={`skip-${item.taskId}|${item.formId}|${item.question.id}`} value={`${item.taskId}|${item.formId}|${item.question.id}`}>
+                        {item.taskName} &gt; {item.formTitle} &gt; {item.question.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedTask.skipCondition && (
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                    <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
+                      <label>{t('tasks.operator')}</label>
+                      <select
+                        className="form-input"
+                        value={selectedTask.skipCondition.operator}
+                        onChange={(e) => handleConditionChange('skipCondition', 'operator', e.target.value)}
+                      >
+                        <option value="equals">{t('forms.operators.equals')}</option>
+                        <option value="not_equals">{t('forms.operators.not_equals')}</option>
+                        <option value="contains">{t('forms.operators.contains')}</option>
+                        {(() => {
+                          const targetQ = availableQuestions.find(q => q.question.id === selectedTask.skipCondition?.questionId)?.question;
+                          if (targetQ && targetQ.type === 'number') {
+                            return (
+                              <>
+                                <option value="greater_than">{t('forms.operators.greater_than')}</option>
+                                <option value="less_than">{t('forms.operators.less_than')}</option>
+                              </>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </select>
+                    </div>
+                    <div className="editor-field" style={{ flex: 2, marginBottom: 0 }}>
+                      <label>{t('tasks.expected_value')}</label>
+                      {(() => {
+                        const targetQ = availableQuestions.find(q => q.question.id === selectedTask.skipCondition?.questionId)?.question;
+                        if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
+                          return (
+                            <select
+                              className="form-input"
+                              value={selectedTask.skipCondition.value}
+                              onChange={(e) => handleConditionChange('skipCondition', 'value', e.target.value)}
+                            >
+                              <option value="">{t('common.select_option')}</option>
+                              {targetQ.options.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          );
+                        }
+                        return (
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder={t('tasks.expected_value')}
+                            value={selectedTask.skipCondition.value}
+                            onChange={(e) => handleConditionChange('skipCondition', 'value', e.target.value)}
+                          />
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

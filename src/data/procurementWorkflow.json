@@ -1,0 +1,551 @@
+{
+  "id": "wf005",
+  "name": "Enterprise Procurement and Vendor Onboarding",
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "Vendor Profile & Security Intake",
+      "order": 1,
+      "formIds": [
+        "form-vendor-profile",
+        "form-service-details",
+        "form-compliance-checks"
+      ],
+      "approverIds": [
+        "usr-18",
+        "usr-5",
+        "usr-8"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 50
+      }
+    },
+    {
+      "id": "task-2",
+      "name": "Legal Contract & NDA Review",
+      "order": 2,
+      "formIds": [
+        "form-legal-nda"
+      ],
+      "approverIds": [
+        "usr-10",
+        "usr-1"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 200
+      }
+    },
+    {
+      "id": "task-3",
+      "name": "GDPR & Data Privacy Audit",
+      "order": 3,
+      "formIds": [
+        "form-gdpr-privacy"
+      ],
+      "approverIds": [
+        "usr-16",
+        "usr-10"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-compliance-checks",
+        "questionId": "q-handles-pii",
+        "operator": "equals",
+        "value": "Yes"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 350
+      }
+    },
+    {
+      "id": "task-4",
+      "name": "Quality Assurance Compliance Audit",
+      "order": 4,
+      "formIds": [
+        "form-qa-validation"
+      ],
+      "approverIds": [
+        "usr-12",
+        "usr-13"
+      ],
+      "skipCondition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-service-details",
+        "questionId": "q-purchase-category",
+        "operator": "equals",
+        "value": "Professional Services"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 500
+      }
+    },
+    {
+      "id": "task-5",
+      "name": "SOC 2 Type II Security Review",
+      "order": 5,
+      "formIds": [
+        "form-soc2-review"
+      ],
+      "approverIds": [
+        "usr-16",
+        "usr-4"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-compliance-checks",
+        "questionId": "q-hosting-type",
+        "operator": "equals",
+        "value": "Cloud (SaaS)"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 650
+      }
+    },
+    {
+      "id": "task-6",
+      "name": "Finance Solvency & Fiscal Clearance",
+      "order": 6,
+      "formIds": [
+        "form-finance-solvency"
+      ],
+      "approverIds": [
+        "usr-2",
+        "usr-17"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 800
+      }
+    },
+    {
+      "id": "task-7",
+      "name": "Hardware Delivery & Asset Tagging",
+      "order": 7,
+      "formIds": [
+        "form-hardware-logistics"
+      ],
+      "approverIds": [
+        "usr-8",
+        "usr-5"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-service-details",
+        "questionId": "q-purchase-category",
+        "operator": "equals",
+        "value": "Hardware Equipment"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 950
+      }
+    },
+    {
+      "id": "task-8",
+      "name": "Trial Pilot Feedback Review",
+      "order": 8,
+      "formIds": [
+        "form-pilot-feedback"
+      ],
+      "approverIds": [
+        "usr-13",
+        "usr-12"
+      ],
+      "skipCondition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-service-details",
+        "questionId": "q-purchase-category",
+        "operator": "equals",
+        "value": "Hardware Equipment"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 1100
+      }
+    },
+    {
+      "id": "task-9",
+      "name": "Marketing Brand Campaign Integration",
+      "order": 9,
+      "formIds": [
+        "form-marketing-comms"
+      ],
+      "approverIds": [
+        "usr-7",
+        "usr-19"
+      ],
+      "condition": {
+        "dependentTaskId": "task-1",
+        "formId": "form-service-details",
+        "questionId": "q-marketing-access",
+        "operator": "equals",
+        "value": "Yes"
+      },
+      "ui_metadata": {
+        "x": 250,
+        "y": 1250
+      }
+    },
+    {
+      "id": "task-10",
+      "name": "Board of Directors Final Authorization",
+      "order": 10,
+      "approverIds": [
+        "usr-1",
+        "usr-2",
+        "usr-20"
+      ],
+      "ui_metadata": {
+        "x": 250,
+        "y": 1400
+      }
+    }
+  ],
+  "forms": [
+    {
+      "id": "form-vendor-profile",
+      "title": "Vendor Corporate Profile",
+      "description": "Basic corporate and legal profile details, including country jurisdictions and spend estimates.",
+      "questions": [
+        {
+          "id": "q-vendor-name",
+          "type": "text",
+          "label": "Legal Vendor Name",
+          "required": true
+        },
+        {
+          "id": "q-vendor-country",
+          "type": "dropdown",
+          "label": "Incorporation Country",
+          "options": [
+            "United States",
+            "European Union",
+            "Rest of World"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-eu-vat-number",
+          "type": "text",
+          "label": "EU VAT Number",
+          "required": true,
+          "condition": {
+            "questionId": "q-vendor-country",
+            "operator": "equals",
+            "value": "European Union"
+          }
+        },
+        {
+          "id": "q-annual-spend",
+          "type": "number",
+          "label": "Estimated Annual Contract Value (USD)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-service-details",
+      "title": "Purchase and Service Specifications",
+      "description": "Itemized details of the products or professional services being requested.",
+      "questions": [
+        {
+          "id": "q-purchase-category",
+          "type": "dropdown",
+          "label": "Purchase Category",
+          "options": [
+            "Software License",
+            "Hardware Equipment",
+            "Professional Services"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-warranty-period",
+          "type": "dropdown",
+          "label": "Equipment Warranty Period",
+          "options": [
+            "1 Year Standard",
+            "3 Years Extended",
+            "5 Years Lifetime Premium"
+          ],
+          "required": true,
+          "condition": {
+            "questionId": "q-purchase-category",
+            "operator": "equals",
+            "value": "Hardware Equipment"
+          }
+        },
+        {
+          "id": "q-marketing-access",
+          "type": "dropdown",
+          "label": "Will this vendor access or produce marketing and brand assets?",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-brand-guidelines-url",
+          "type": "text",
+          "label": "URL to Brand Asset Requirements Checklist",
+          "required": true,
+          "condition": {
+            "questionId": "q-marketing-access",
+            "operator": "equals",
+            "value": "Yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "form-compliance-checks",
+      "title": "Technical and Security Compliance",
+      "description": "IT and Infosec questionnaires focusing on data processing methods and architecture designs.",
+      "questions": [
+        {
+          "id": "q-hosting-type",
+          "type": "dropdown",
+          "label": "Infrastructure Hosting Architecture",
+          "options": [
+            "Cloud (SaaS)",
+            "On-Premises",
+            "Hybrid"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-cloud-provider",
+          "type": "dropdown",
+          "label": "Cloud Provider Base",
+          "options": [
+            "AWS",
+            "Azure",
+            "Google Cloud Platform (GCP)",
+            "Multi-cloud / Custom Datacenter"
+          ],
+          "required": true,
+          "condition": {
+            "questionId": "q-hosting-type",
+            "operator": "equals",
+            "value": "Cloud (SaaS)"
+          }
+        },
+        {
+          "id": "q-handles-pii",
+          "type": "dropdown",
+          "label": "Does the vendor handle Personally Identifiable Information (PII)?",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-pii-types",
+          "type": "checkbox",
+          "label": "Types of PII processed",
+          "options": [
+            "Financial / Credit Card Records",
+            "Health & Medical Information",
+            "Employee/Customer Names & Emails"
+          ],
+          "required": true,
+          "condition": {
+            "questionId": "q-handles-pii",
+            "operator": "equals",
+            "value": "Yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "form-legal-nda",
+      "title": "Legal Contract and NDA Details",
+      "description": "Standard contract parameters including governing law and liability caps.",
+      "questions": [
+        {
+          "id": "q-governing-law",
+          "type": "dropdown",
+          "label": "Governing Law State",
+          "options": [
+            "State of Delaware",
+            "State of New York",
+            "State of California"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-indemnity-limit",
+          "type": "number",
+          "label": "Limitation of Liability Limit (USD)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-gdpr-privacy",
+      "title": "GDPR Compliance & Privacy Impact",
+      "description": "Mandatory privacy impact assessments for vendors processing PII.",
+      "questions": [
+        {
+          "id": "q-dpa-signed",
+          "type": "dropdown",
+          "label": "Has a formal Data Processing Addendum (DPA) been executed?",
+          "options": [
+            "Yes, DPA is fully executed",
+            "No, pending legal finalization"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-encryption-transit",
+          "type": "dropdown",
+          "label": "Is data encrypted in transit and at rest?",
+          "options": [
+            "Yes, TLS 1.3 and AES-256 implemented",
+            "No, requires special security exception review"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-qa-validation",
+      "title": "Quality Assurance Compliance Audit",
+      "description": "Verification of QA automation coverage and sandbox test run logs.",
+      "questions": [
+        {
+          "id": "q-qa-passed-percent",
+          "type": "number",
+          "label": "Staging Automation Suite Pass Rate (%)",
+          "required": true
+        },
+        {
+          "id": "q-browser-matrix",
+          "type": "dropdown",
+          "label": "Have all target enterprise browsers been validated?",
+          "options": [
+            "Yes, full browser compatibility matrix passed",
+            "No, pending legacy browser review"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-soc2-review",
+      "title": "SaaS Infosec Audit - SOC 2 Review",
+      "description": "Infosec review of SaaS services focusing on systems security, availability, and confidentiality.",
+      "questions": [
+        {
+          "id": "q-soc2-date",
+          "type": "text",
+          "label": "Date of Latest SOC 2 Type II Report",
+          "required": true
+        },
+        {
+          "id": "q-soc2-exceptions",
+          "type": "textarea",
+          "label": "Describe any exceptions identified in the auditor's report",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "form-finance-solvency",
+      "title": "Solvency and Dun & Bradstreet Audit",
+      "description": "Audit check for assessing vendor financial stability and budget reservations.",
+      "questions": [
+        {
+          "id": "q-dnb-score",
+          "type": "number",
+          "label": "Dun & Bradstreet (D&B) Credit Score Rating (1-100)",
+          "required": true
+        },
+        {
+          "id": "q-funding-verif",
+          "type": "dropdown",
+          "label": "Has procurement budget been verified in Finance Ledger?",
+          "options": [
+            "Yes, budget successfully reserved",
+            "No, pending department transfer approvals"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-hardware-logistics",
+      "title": "Hardware Delivery and Logistics coordinates",
+      "description": "Shipping coordinates and handling details for heavy hardware equipment.",
+      "questions": [
+        {
+          "id": "q-warehouse-dest",
+          "type": "dropdown",
+          "label": "Target Central Warehouse",
+          "options": [
+            "North America East Hub (Ohio)",
+            "Europe West Hub (Frankfurt)",
+            "Asia Pacific Hub (Singapore)"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-delivery-date-requested",
+          "type": "text",
+          "label": "Requested On-Site Delivery Date",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-marketing-comms",
+      "title": "PR and Brand Integration Details",
+      "description": "Coordination parameters for marketing agencies and branding campaigns.",
+      "questions": [
+        {
+          "id": "q-pr-embargo",
+          "type": "text",
+          "label": "Public Relations Embargo Release Date (YYYY-MM-DD)",
+          "required": true
+        },
+        {
+          "id": "q-campaign-name-label",
+          "type": "text",
+          "label": "Co-Branding Campaign Code Name",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "form-pilot-feedback",
+      "title": "Vendor Trial Pilot Feedback Questionnaire",
+      "description": "User feedback from the core group during the 14-day software/service sandbox trial.",
+      "questions": [
+        {
+          "id": "q-trial-success",
+          "type": "dropdown",
+          "label": "Overall User Sandbox Experience Score",
+          "options": [
+            "Highly Satisfied (Meets all needs)",
+            "Somewhat Satisfied (Requires custom configurations)",
+            "Unsatisfied (Critical missing features)"
+          ],
+          "required": true
+        },
+        {
+          "id": "q-trial-bugs",
+          "type": "textarea",
+          "label": "Report any bugs or integration obstacles observed",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

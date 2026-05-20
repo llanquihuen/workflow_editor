@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import Editor from '@monaco-editor/react';
 import { useWorkflowStore } from '../store/useWorkflowStore';
 
 export const JsonEditorView = () => {
+  const { t } = useTranslation();
   const { workflow, updateWorkflow, theme } = useWorkflowStore();
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +37,9 @@ export const JsonEditorView = () => {
         setError(null);
       } catch (err) {
         if (err instanceof Error) {
-          setError(`Error: ${err.message}`);
+          setError(`${t('common.error')}: ${err.message}`);
         } else {
-          setError('Error: JSON inválido');
+          setError(`${t('common.error')}: JSON inválido`);
         }
       }
     }, 600); // 600ms debounce
@@ -46,7 +48,7 @@ export const JsonEditorView = () => {
   return (
     <div className="panel-container">
       <div className="panel-header">
-        <h3>1. Editor JSON {error && <span style={{color: '#ef4444', fontSize: '12px', marginLeft: '10px'}}>(Guardando... {error})</span>}</h3>
+        <h3>{t('json.title')} {error && <span style={{color: '#ef4444', fontSize: '12px', marginLeft: '10px'}}>({t('common.saving')}... {error})</span>}</h3>
       </div>
       {error && <div className="error-banner">{error}</div>}
       <div className="panel-content">
