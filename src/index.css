@@ -2055,17 +2055,20 @@ body {
   border-color: rgba(239, 68, 68, 0.25);
 }
 
-/* Tabla */
 .dashboard-table-container {
   background-color: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: auto; /* Permite scroll horizontal y vertical según el contenido */
+  max-height: calc(100vh - 280px); /* Altura máxima dinámica premium */
+  min-height: 250px;
   box-shadow: 0 4px 6px -1px var(--shadow-color);
+  position: relative;
 }
 
 .dashboard-table {
   width: 100%;
+  min-width: 1000px; /* Asegura un ancho mínimo óptimo para las 9 columnas relacionales */
   border-collapse: collapse;
   text-align: left;
 }
@@ -2078,6 +2081,10 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  background-color: var(--panel-bg); /* Fondo sólido para que no se traslapen las filas al hacer scroll */
+  z-index: 10;
 }
 
 .dashboard-table td {
