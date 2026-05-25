@@ -166,7 +166,11 @@ export const api = {
     });
 
     if (!res.ok) {
-      throw new Error(`Error al eliminar el workflow con ID: ${id}`);
+      if (res.status === 403) {
+        throw new Error('No tiene permisos para eliminar este flujo de trabajo (403 Forbidden).');
+      }
+      const textErr = await res.text().catch(() => '');
+      throw new Error(textErr || `Error al eliminar el flujo de trabajo (Código: ${res.status}).`);
     }
   }
 };
