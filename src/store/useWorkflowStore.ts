@@ -24,7 +24,7 @@ interface WorkflowState {
   loadWorkflow: (id: string) => void;
   createNewWorkflow: (name: string) => void;
   duplicateWorkflow: (id: string) => void;
-  deleteWorkflow: (id: string) => void;
+  deleteWorkflow: (id: string) => Promise<void>;
   toggleWorkflowEnabled: (id: string) => void;
 
   // Task State
@@ -383,20 +383,62 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       };
     }),
 
-  deleteWorkflow: (id) =>
-    set((state) => {
-      const updatedWorkflows = state.workflows.filter((wf) => wf.id !== id);
-      let nextActive = state.workflow;
-      if (state.workflow.id === id) {
-        nextActive = updatedWorkflows[0] || null;
+  deleteWorkflow: async (id) => {
+    if (get().isOfflineMode) {
+      set((state) => {
+        const updatedWorkflows = state.workflows.filter((wf) => wf.id !== id);
+        let nextActive = state.workflow;
+        if (state.workflow.id === id) {
+          nextActive = updatedWorkflows[0] || null;
+        }
+        return {
+          workflows: updatedWorkflows,
+          workflow: nextActive,
+          selectedTaskId: nextActive?.tasks?.[0]?.id || null,
+          selectedFormId: nextActive?.forms?.[0]?.id || null,
+        };
+      });
+      return;
+    }
+
+    if (get().isAuthenticated) {
+      set({ loading: true, errorMessage: null });
+      try {
+        await api.deleteWorkflow(id);
+        set((state) => {
+          const updatedWorkflows = state.workflows.filter((wf) => wf.id !== id);
+          let nextActive = state.workflow;
+          if (state.workflow.id === id) {
+            nextActive = updatedWorkflows[0] || null;
+          }
+          return {
+            workflows: updatedWorkflows,
+            workflow: nextActive,
+            selectedTaskId: nextActive?.tasks?.[0]?.id || null,
+            selectedFormId: nextActive?.forms?.[0]?.id || null,
+            loading: false,
+          };
+        });
+      } catch (e: any) {
+        set({ loading: false, errorMessage: e.message || 'Error al eliminar el workflow de la base de datos' });
+        throw e;
       }
-      return {
-        workflows: updatedWorkflows,
-        workflow: nextActive,
-        selectedTaskId: nextActive?.tasks?.[0]?.id || null,
-        selectedFormId: nextActive?.forms?.[0]?.id || null,
-      };
-    }),
+    } else {
+      set((state) => {
+        const updatedWorkflows = state.workflows.filter((wf) => wf.id !== id);
+        let nextActive = state.workflow;
+        if (state.workflow.id === id) {
+          nextActive = updatedWorkflows[0] || null;
+        }
+        return {
+          workflows: updatedWorkflows,
+          workflow: nextActive,
+          selectedTaskId: nextActive?.tasks?.[0]?.id || null,
+          selectedFormId: nextActive?.forms?.[0]?.id || null,
+        };
+      });
+    }
+  },
 
   toggleWorkflowEnabled: (id) =>
     set((state) => {

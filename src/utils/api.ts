@@ -157,5 +157,16 @@ export const api = {
 
     const text = await res.text();
     return JSON.parse(text);
+  },
+
+  async deleteWorkflow(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/workflows/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Error al eliminar el workflow con ID: ${id}`);
+    }
   }
 };
