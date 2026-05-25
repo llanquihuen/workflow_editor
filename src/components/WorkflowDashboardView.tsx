@@ -315,7 +315,7 @@ export const WorkflowDashboardView: React.FC = () => {
                 return (
                   <tr key={wf.id}>
                     <td className="col-id-badge">
-                      <span>{wf.id}</span>
+                      <span style={{width:'13ch', textAlign:'center',display:'inline-block'}}>{wf.id}</span>
                     </td>
                     <td className="col-name-link">
                       <button className="wf-name-btn" onClick={() => loadWorkflow(wf.id)}>

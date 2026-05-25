@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Workflow, Task, Form } from '../types/workflow.types';
 import i18n from '../i18n';
+import { api, getAuthToken, getAuthUsername, removeAuthToken } from '../utils/api';
 
 import procurementWorkflowData from '../data/procurementWorkflow.json';
 import onboardingWorkflowData from '../data/onboardingWorkflow.json';
@@ -43,6 +44,21 @@ interface WorkflowState {
   addForm: (form: Form) => void;
   updateForm: (formId: string, updates: Partial<Form>) => void;
   deleteForm: (formId: string) => void;
+
+  // Backend Sync State
+  isAuthenticated: boolean;
+  authUsername: string | null;
+  loading: boolean;
+  errorMessage: string | null;
+  workflowHistory: any[];
+  
+  checkAuth: () => void;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => void;
+  fetchWorkflowsFromDb: () => Promise<void>;
+  saveWorkflowToDb: (changeSummary: string, newVersion?: string) => Promise<void>;
+  fetchHistory: (id: string) => Promise<void>;
+  rollbackToVersion: (version: string) => Promise<void>;
 }
 
 // Recalculates the vertical layout coordinates and task orders
@@ -79,6 +95,35 @@ const enrichWorkflow = (wf: any, index: number): Workflow => {
   } as Workflow;
 };
 
+// Mappers between API models and Frontend models
+const mapApiToFrontend = (apiWf: any): Workflow => {
+  return {
+    id: apiWf.id,
+    name: apiWf.name,
+    version: apiWf.version || 'v1.0',
+    ownerId: apiWf.ownerId || 'admin',
+    updatedAt: apiWf.updatedAt || new Date().toLocaleDateString('en-US'),
+    rating: apiWf.rating || 5,
+    enabled: apiWf.enabled !== undefined ? apiWf.enabled : true,
+    tasks: apiWf.tasks || [],
+    forms: apiWf.forms || []
+  };
+};
+
+const mapFrontendToApi = (wf: Workflow): any => {
+  return {
+    id: wf.id,
+    name: wf.name,
+    version: wf.version || 'v1.0',
+    ownerId: wf.ownerId || 'admin',
+    rating: wf.rating || 5,
+    enabled: wf.enabled,
+    tasks: wf.tasks || [],
+    forms: wf.forms || []
+  };
+};
+
+
 const rawWorkflowsData = [
   procurementWorkflowData,
   onboardingWorkflowData,
@@ -90,13 +135,124 @@ const rawWorkflowsData = [
 const initialWorkflows = rawWorkflowsData.map((wf, idx) => enrichWorkflow(wf, idx));
 const initialActive = initialWorkflows[0];
 
-export const useWorkflowStore = create<WorkflowState>((set) => ({
+export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   workflows: initialWorkflows,
   workflow: initialActive,
   currentView: 'dashboard',
   selectedTaskId: initialActive.tasks?.[0]?.id || null,
   selectedFormId: initialActive.forms?.[0]?.id || null,
   theme: 'light',
+
+  // Backend sync states
+  isAuthenticated: false,
+  authUsername: null,
+  loading: false,
+  errorMessage: null,
+  workflowHistory: [],
+
+  checkAuth: () => {
+    const token = getAuthToken();
+    const username = getAuthUsername();
+    if (token && username) {
+      set({ isAuthenticated: true, authUsername: username });
+      get().fetchWorkflowsFromDb();
+    }
+  },
+
+  login: async (username, password) => {
+    set({ loading: true, errorMessage: null });
+    try {
+      const data = await api.login(username, password);
+      set({ isAuthenticated: true, authUsername: data.username, loading: false });
+      await get().fetchWorkflowsFromDb();
+    } catch (e: any) {
+      set({ loading: false, errorMessage: e.message || 'Error de autenticación' });
+      throw e;
+    }
+  },
+
+  logout: () => {
+    removeAuthToken();
+    localStorage.removeItem('bank_workflow_username');
+    set({ isAuthenticated: false, authUsername: null, workflows: initialWorkflows, workflow: initialActive });
+  },
+
+  fetchWorkflowsFromDb: async () => {
+    set({ loading: true, errorMessage: null });
+    try {
+      const apiWorkflows = await api.getWorkflows();
+      const mapped = apiWorkflows.map(mapApiToFrontend);
+      
+      set({
+        workflows: mapped.length > 0 ? mapped : initialWorkflows,
+        workflow: mapped.length > 0 ? mapped[0] : initialActive,
+        loading: false
+      });
+    } catch (e: any) {
+      set({ loading: false, errorMessage: 'Error al conectar con la base de datos local' });
+    }
+  },
+
+  saveWorkflowToDb: async (changeSummary, newVersion) => {
+    set({ loading: true, errorMessage: null });
+    try {
+      const active = get().workflow;
+      const activeWithVersion = newVersion ? { ...active, version: newVersion } : active;
+      const apiPayload = mapFrontendToApi(activeWithVersion);
+      const savedApi = await api.saveWorkflow(apiPayload, changeSummary);
+      const savedFrontend = mapApiToFrontend(savedApi);
+
+      set((state) => ({
+        workflow: savedFrontend,
+        workflows: state.workflows.map((w) => (w.id === savedFrontend.id ? savedFrontend : w)),
+        loading: false
+      }));
+      
+      // Refresh history list
+      await get().fetchHistory(savedFrontend.id);
+    } catch (e: any) {
+      set({ loading: false, errorMessage: e.message || 'Error al persistir cambios' });
+      throw e;
+    }
+  },
+
+  fetchHistory: async (id) => {
+    try {
+      const history = await api.getHistory(id);
+      set({ workflowHistory: history });
+    } catch (e) {
+      // ignore
+    }
+  },
+
+  rollbackToVersion: async (version) => {
+    set({ loading: true, errorMessage: null });
+    try {
+      const active = get().workflow;
+      const snapshot = await api.getHistoryVersionJson(active.id, version);
+      const rolledBack = mapApiToFrontend(snapshot);
+
+      // Increment version code for the new save operation
+      const currentVerNum = parseFloat((active.version || 'v1.0').replace(/[^\d.]/g, '')) || 1.0;
+      const nextVer = `v${(currentVerNum + 0.1).toFixed(1)}`;
+      const updatedRollback = {
+        ...rolledBack,
+        version: nextVer
+      };
+
+      set((state) => ({
+        workflow: updatedRollback,
+        workflows: state.workflows.map((w) => (w.id === active.id ? updatedRollback : w)),
+        loading: false
+      }));
+
+      // Automatically persist rollback to DB as a new audit version
+      await get().saveWorkflowToDb(`Restaurada versión anterior ${version}`);
+    } catch (e: any) {
+      set({ loading: false, errorMessage: e.message || 'Error en rollback' });
+      throw e;
+    }
+  },
 
   updateWorkflow: (newWorkflow) =>
     set((state) => ({
@@ -110,6 +266,12 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
     set((state) => {
       const wf = state.workflows.find((w) => w.id === id);
       if (!wf) return state;
+      
+      // Proactively fetch history if authenticated
+      if (state.isAuthenticated) {
+        get().fetchHistory(id);
+      }
+
       return {
         workflow: wf,
         currentView: 'flow',
@@ -120,23 +282,19 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
 
   createNewWorkflow: (name) =>
     set((state) => {
-      const newId = `WK${Math.floor(100000 + Math.random() * 900000)}`;
+      const newId = `WK-${Math.floor(100000 + Math.random() * 900000)}`;
       const taskName = i18n.t('tasks.new_task_default') || 'Paso 1';
       const newWorkflow: Workflow = {
         id: newId,
         name,
-        ownerId: `usr-${Math.floor(Math.random() * 20) + 1}`,
-        updatedAt: new Date().toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric',
-        }),
-        version: 'v 1',
+        ownerId: state.authUsername || 'admin',
+        updatedAt: new Date().toLocaleDateString('en-US'),
+        version: 'v1.0',
         rating: 5,
         enabled: true,
         tasks: [
           {
-            id: 'task-1',
+            id: `${newId}-T-1`,
             name: taskName,
             order: 1,
             ui_metadata: { x: 250, y: 50 },
@@ -147,11 +305,18 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
         forms: [],
       };
 
+      // Automatically persist newly created workflow to database
+      if (state.isAuthenticated) {
+        setTimeout(() => {
+          get().saveWorkflowToDb('Inicialización del flujo');
+        }, 100);
+      }
+
       return {
         workflows: [...state.workflows, newWorkflow],
         workflow: newWorkflow,
         currentView: 'flow',
-        selectedTaskId: 'task-1',
+        selectedTaskId: `${newId}-T-1`,
         selectedFormId: null,
       };
     }),
@@ -161,23 +326,30 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
       const target = state.workflows.find((wf) => wf.id === id);
       if (!target) return state;
 
-      const newId = `WK${Math.floor(100000 + Math.random() * 900000)}`;
+      const newId = `WK-${Math.floor(100000 + Math.random() * 900000)}`;
       const duplicated: Workflow = {
         ...target,
         id: newId,
         name: `${target.name} (Copia)`,
-        ownerId: `usr-${Math.floor(Math.random() * 20) + 1}`,
-        updatedAt: new Date().toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric',
-        }),
-        version: 'v 1',
+        ownerId: state.authUsername || 'admin',
+        updatedAt: new Date().toLocaleDateString('en-US'),
+        version: 'v1.0',
         rating: 5,
         enabled: true,
-        tasks: target.tasks.map((t) => ({ ...t })),
+        tasks: target.tasks.map((t, idx) => ({ 
+          ...t, 
+          id: `${newId}-T-${idx + 1}` 
+        })),
         forms: target.forms.map((f) => ({ ...f })),
       };
+
+      if (state.isAuthenticated) {
+        setTimeout(() => {
+          // Select duplicated workflow and save
+          set({ workflow: duplicated });
+          get().saveWorkflowToDb(`Copiado desde ${target.name}`);
+        }, 100);
+      }
 
       return {
         workflows: [...state.workflows, duplicated],
@@ -208,6 +380,13 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
         state.workflow.id === id
           ? { ...state.workflow, enabled: !state.workflow.enabled }
           : state.workflow;
+
+      setTimeout(() => {
+        if (state.isAuthenticated) {
+          get().saveWorkflowToDb('Cambiado estado de activación');
+        }
+      }, 50);
+
       return {
         workflows: updatedWorkflows,
         workflow: updatedActive,

@@ -45,6 +45,7 @@ export interface Task {
   ui_metadata: UIMetadata;
   condition?: TaskCondition;
   skipCondition?: TaskCondition;
+  taskType?: 'normal' | 'dynamic' | 'iso';
 }
 
 export interface Workflow {

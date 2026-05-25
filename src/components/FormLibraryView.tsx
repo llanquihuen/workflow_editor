@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { useWorkflowStore } from '../store/useWorkflowStore';
@@ -47,19 +47,312 @@ const getQuestionNumberMap = (questions: FormQuestion[]) => {
   return numberMap;
 };
 
+interface QuestionAlternativesEditorProps {
+  question: FormQuestion;
+  onUpdateOptions: (options: string[]) => void;
+  t: (key: string) => string;
+}
+
+const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAlternativesEditorProps) => {
+  const currentOptions = question.options || [];
+  const optionsJoined = currentOptions.join('\n');
+  const [prevOptionsText, setPrevOptionsText] = useState(optionsJoined);
+  const [localText, setLocalText] = useState(optionsJoined);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Sync state with props during render using primitive string comparison to avoid infinite loops and set-state-in-effect warnings
+  if (optionsJoined !== prevOptionsText) {
+    setPrevOptionsText(optionsJoined);
+    if (!isFocused) {
+      setLocalText(optionsJoined);
+    }
+  }
+
+  const lines = localText.split('\n');
+  const nonBlankLines = lines.map(l => l.trim()).filter(l => l !== '');
+
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  nonBlankLines.forEach(line => {
+    const normalized = line.toLowerCase();
+    if (seen.has(normalized)) {
+      duplicates.add(line);
+    } else {
+      seen.add(normalized);
+    }
+  });
+
+  const duplicateCount = duplicates.size;
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setLocalText(val);
+
+    const newOpts = val
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line !== '');
+
+    const optionsChanged = 
+      newOpts.length !== currentOptions.length ||
+      newOpts.some((opt, idx) => opt !== currentOptions[idx]);
+
+    if (optionsChanged) {
+      onUpdateOptions(newOpts);
+    }
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    const cleanedText = nonBlankLines.join('\n');
+    setLocalText(cleanedText);
+    onUpdateOptions(nonBlankLines);
+  };
+
+  const handleSort = () => {
+    const sorted = [...nonBlankLines].sort((a, b) => 
+      a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
+    );
+    const uniqueSorted = Array.from(new Set(sorted));
+    setLocalText(uniqueSorted.join('\n'));
+    onUpdateOptions(uniqueSorted);
+  };
+
+  const handleClear = () => {
+    setLocalText('');
+    onUpdateOptions([]);
+  };
+
+  const handleFixDuplicates = () => {
+    const uniqueOpts = Array.from(new Set(nonBlankLines));
+    setLocalText(uniqueOpts.join('\n'));
+    onUpdateOptions(uniqueOpts);
+  };
+
+  const handleApplyAndClose = () => {
+    setIsEditing(false);
+    const cleanedText = nonBlankLines.join('\n');
+    setLocalText(cleanedText);
+    onUpdateOptions(nonBlankLines);
+  };
+
+  if (!isEditing) {
+    return (
+      <div className="options-editor" style={{ animation: 'fadeIn 0.25s ease' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <label style={{ margin: 0, fontWeight: 'bold' }}>{t('forms.field_options')}</label>
+          <span className={`alt-editor-badge ${currentOptions.length > 0 ? 'success' : ''}`}>
+            {currentOptions.length} {t('forms.alternatives_count')}
+          </span>
+        </div>
+
+        {/* Beautiful list of read-only/consolidated capsules */}
+        <div 
+          className="consolidated-options-container"
+          style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: '6px', 
+            marginBottom: '12px',
+            background: 'var(--bg-dark)',
+            border: '1px solid var(--panel-border)',
+            borderRadius: '8px',
+            padding: '10px 12px',
+            minHeight: '48px',
+            alignItems: 'center'
+          }}
+        >
+          {currentOptions.map((opt, optIndex) => (
+            <div
+              key={optIndex}
+              className="multiselect-pill"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'var(--panel-border)',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+                color: 'var(--text-main)',
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '0.85rem',
+                animation: 'fadeIn 0.2s ease'
+              }}
+            >
+              <span>{opt}</span>
+              <span
+                className="pill-remove"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const newOpts = currentOptions.filter((_, i) => i !== optIndex);
+                  onUpdateOptions(newOpts);
+                }}
+                style={{ cursor: 'pointer', fontWeight: 'bold', color: 'var(--text-muted)' }}
+                title={t('forms.remove_option')}
+              >
+                ×
+              </span>
+            </div>
+          ))}
+          {currentOptions.length === 0 && (
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              {t('forms.no_options')}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setIsEditing(true)}
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              padding: '6px 14px', 
+              fontSize: '0.85rem',
+              fontWeight: '600'
+            }}
+          >
+            ✏️ {t('forms.edit_options')}
+          </button>
+          
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleSort}
+            disabled={currentOptions.length <= 1}
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '4px', 
+              padding: '6px 12px', 
+              fontSize: '0.85rem'
+            }}
+          >
+            🔤 {t('forms.sort_alphabetically')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="options-editor" style={{ animation: 'fadeIn 0.25s ease' }}>
+      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>
+        {t('forms.field_options')}
+      </label>
+
+      <div className="alt-editor-container">
+        <div className="alt-editor-header">
+          <div className="alt-editor-left">
+            <span className={`alt-editor-badge ${currentOptions.length > 0 ? 'success' : ''}`}>
+              {currentOptions.length} {t('forms.alternatives_count')}
+            </span>
+            {duplicateCount > 0 && (
+              <span 
+                className="alt-editor-warning" 
+                onClick={handleFixDuplicates}
+                title={t('forms.fix_duplicates')}
+              >
+                ⚠️ {duplicateCount} {t('forms.duplicates_detected')} ({t('forms.fix_duplicates')})
+              </span>
+            )}
+          </div>
+          
+          <div className="alt-editor-actions">
+            <button 
+              type="button" 
+              className="alt-editor-btn primary"
+              onClick={handleSort}
+              disabled={currentOptions.length <= 1}
+              title={t('forms.sort_alphabetically')}
+            >
+              🔤 {t('forms.sort_alphabetically')}
+            </button>
+            <button 
+              type="button" 
+              className="alt-editor-btn danger"
+              onClick={handleClear}
+              disabled={currentOptions.length === 0}
+              title={t('forms.clear_all')}
+            >
+              🧹 {t('forms.clear_all')}
+            </button>
+          </div>
+        </div>
+
+        <textarea
+          className="alt-editor-textarea"
+          placeholder={t('forms.bulk_add_placeholder')}
+          value={localText}
+          onChange={handleChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={handleBlur}
+          autoFocus
+        />
+        
+        <div className="alt-editor-footer" style={{ borderBottom: '1px dashed var(--panel-border)', borderTop: 'none', paddingBottom: '8px' }}>
+          <span>💡 {t('forms.bulk_add_help')}</span>
+          {isFocused && (
+            <span style={{ color: 'var(--success)', animation: 'fadeIn 0.2s', display: 'flex', alignItems: 'center', gap: '3px' }}>
+              ⚡ Guardado automático
+            </span>
+          )}
+        </div>
+
+        <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.01)', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleApplyAndClose}
+            style={{ 
+              padding: '6px 16px', 
+              fontSize: '0.85rem', 
+              fontWeight: '700',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'var(--success)',
+              borderColor: 'var(--success)'
+            }}
+          >
+            ✓ {t('forms.apply_changes')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const FormLibraryView = () => {
   const { t } = useTranslation();
   const { workflow, selectedFormId, setSelectedForm, addForm, updateForm, deleteForm } = useWorkflowStore();
   const forms = workflow.forms || [];
   const selectedForm = forms.find(f => f.id === selectedFormId);
+  const ownerTask = selectedForm
+    ? workflow.tasks.find(task => task.formIds?.includes(selectedForm.id))
+    : undefined;
   const [editingTitle, setEditingTitle] = useState<Record<string, string>>({});
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
   const [showPreview, setShowPreview] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [bulkEditQuestionId, setBulkEditQuestionId] = useState<string | null>(null);
-  const [bulkText, setBulkText] = useState('');
-  const [duplicateError, setDuplicateError] = useState<{ questionId: string, option: string } | null>(null);
   const [collapsedQuestions, setCollapsedQuestions] = useState<Set<string>>(new Set());
+  const [questionToDelete, setQuestionToDelete] = useState<FormQuestion | null>(null);
+  const [formToDelete, setFormToDelete] = useState<Form | null>(null);
+  const [prevFormId, setPrevFormId] = useState<string | null>(null);
+
+  // Colapsar preguntas por defecto durante el renderizado si hay más de una al cambiar de formulario o cargar la vista
+  if (selectedFormId !== prevFormId) {
+    setPrevFormId(selectedFormId);
+    if (selectedForm && selectedForm.questions.length > 1) {
+      setCollapsedQuestions(new Set(selectedForm.questions.map(q => q.id)));
+    } else {
+      setCollapsedQuestions(new Set());
+    }
+  }
 
   const questionNumberMap = selectedForm ? getQuestionNumberMap(selectedForm.questions) : new Map<string, string>();
 
@@ -147,52 +440,44 @@ export const FormLibraryView = () => {
     updateForm(selectedForm.id, { questions: [...selectedForm.questions, newQuestion] });
   };
 
-  const handleDeleteQuestion = (questionId: string) => {
+  const deleteQuestionById = (questionId: string) => {
     if (!selectedForm) return;
     updateForm(selectedForm.id, {
       questions: selectedForm.questions.filter(q => q.id !== questionId)
     });
   };
 
-  const handleOpenBulkEdit = (q: FormQuestion) => {
-    setBulkEditQuestionId(q.id);
-    setBulkText((q.options || []).join('\n'));
+  const questionHasInformation = (question: FormQuestion) => {
+    const hasCustomLabel = question.label.trim() !== '' && question.label.trim() !== t('forms.new_question').trim();
+    const hasOptions = (question.options || []).some(option => option.trim() !== '');
+
+    return (
+      hasCustomLabel ||
+      question.type !== 'text' ||
+      question.required === true ||
+      question.isSensitive === true ||
+      hasOptions ||
+      !!question.condition
+    );
   };
 
-  const handleSaveBulkOptions = (questionId: string) => {
-    const options = bulkText
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line !== '');
-    
-    // Eliminar duplicados manteniendo el orden
-    const uniqueOptions = Array.from(new Set(options));
-    
-    handleQuestionUpdate(questionId, { options: uniqueOptions });
-    setBulkEditQuestionId(null);
-    setBulkText('');
-  };
-
-  const handleAddOption = (questionId: string, value: string) => {
+  const handleDeleteQuestion = (questionId: string) => {
     if (!selectedForm) return;
-    const q = selectedForm.questions.find(q => q.id === questionId);
-    if (!q) return;
+    const question = selectedForm.questions.find(q => q.id === questionId);
+    if (!question) return;
 
-    const val = value.trim();
-    if (!val) return;
-
-    const currentOpts = q.options || [];
-    if (currentOpts.includes(val)) {
-      setDuplicateError({ questionId, option: val });
-      setTimeout(() => setDuplicateError(null), 3000);
+    if (questionHasInformation(question)) {
+      setQuestionToDelete(question);
       return;
     }
 
-    handleQuestionUpdate(questionId, { options: [...currentOpts, val] });
-    setDuplicateError(null);
-    
-    const inputEl = document.getElementById(`new-opt-input-${questionId}`) as HTMLInputElement;
-    if (inputEl) inputEl.value = '';
+    deleteQuestionById(questionId);
+  };
+
+  const handleConfirmDeleteQuestion = () => {
+    if (!questionToDelete) return;
+    deleteQuestionById(questionToDelete.id);
+    setQuestionToDelete(null);
   };
 
   const handleToggleCollapse = (questionId: string) => {
@@ -220,12 +505,18 @@ export const FormLibraryView = () => {
     const formToDelete = forms.find(f => f.id === formId);
     if (!formToDelete) return;
 
-    const confirmed = window.confirm(
-      t('forms.delete_confirm', { name: formToDelete.title })
-    );
+    if (formToDelete.questions.length > 0) {
+      setFormToDelete(formToDelete);
+      return;
+    }
 
-    if (!confirmed) return;
     deleteForm(formId);
+  };
+
+  const handleConfirmDeleteForm = () => {
+    if (!formToDelete) return;
+    deleteForm(formToDelete.id);
+    setFormToDelete(null);
   };
 
   return (
@@ -237,7 +528,9 @@ export const FormLibraryView = () => {
             <>
               <h3>{t('forms.title')} ({forms.length})</h3>
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <button className="btn-small" onClick={handleCreateForm} title={t('forms.new_form_title')}>{t('forms.new_form')}</button>
+                <button className="btn-premium-action" onClick={handleCreateForm} title={t('forms.new_form_title')}>
+                  {t('forms.new_form')}
+                </button>
                 <button className="btn-icon" onClick={() => setIsCollapsed(true)} title={t('common.collapse')} style={{ color: 'var(--text-muted)' }}>
                   ◀
                 </button>
@@ -248,10 +541,9 @@ export const FormLibraryView = () => {
               <button className="btn-icon" onClick={() => setIsCollapsed(false)} title={t('common.expand')} style={{ color: 'var(--text-muted)' }}>
                 ▶
               </button>
-              <button className="btn-icon" onClick={handleCreateForm} title={t('forms.new_form_title')} style={{ backgroundColor: 'var(--success)', color: 'white', borderRadius: '5px', width: '100%', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', padding: 0, fontWeight:'bold' }}>
+              <button className="btn-premium-action" onClick={handleCreateForm} title={t('forms.new_form_title')} style={{ width: '100%', height: '32px', padding: 0, fontSize: '0.75rem' }}>
                 {t('forms.new_form')}
               </button>
-
             </div>
           )}
         </div>
@@ -289,11 +581,16 @@ export const FormLibraryView = () => {
                 <>
                   <span>{f.title}</span>
                   <button
-                    className="btn-icon danger remove-form"
+                    className="btn-icon danger form-delete-btn"
                     onClick={(e) => { e.stopPropagation(); handleDeleteForm(f.id); }}
                     title={t('forms.delete_form')}
+                    aria-label={t('forms.delete_form')}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    ×
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
                   </button>
                 </>
               )}
@@ -373,6 +670,11 @@ export const FormLibraryView = () => {
                         <label>{t('forms.description')}</label>
                         <textarea className="form-input textarea" value={selectedForm.description || ''} onChange={handleDescChange} />
                       </div>
+                      {ownerTask && (
+                        <p className="form-desc" style={{ marginTop: '10px', fontWeight:"bold" }}>
+                          {t('forms.occupied_by_task', { taskName: ownerTask.name })}
+                        </p>
+                      )}
                     </div>
 
                     <div className="editor-section">
@@ -455,7 +757,30 @@ export const FormLibraryView = () => {
                                     {q.isSensitive && <span className="node-badge badge-sensitive">{t('common.sensitive_info')}</span>}
                                   </div>
                                 </div>
-                                <button className="btn-icon danger" onClick={() => handleDeleteQuestion(q.id)} style={{ marginTop: '2px' }}>🗑</button>
+                                <button
+                                  className="btn-icon danger question-delete-btn"
+                                  onClick={() => handleDeleteQuestion(q.id)}
+                                  title={t('common.delete')}
+                                  aria-label={t('common.delete')}
+                                  style={{
+                                    alignSelf: 'start',
+                                    width: '34px',
+                                    height: '34px',
+                                    minWidth: '34px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '8px',
+                                    fontSize: '1rem',
+                                    lineHeight: 1,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  </svg>
+                                </button>
                               </div>
 
                               <div className="card-body">
@@ -575,124 +900,11 @@ export const FormLibraryView = () => {
                                 </div>
                               </div>
                               {(q.type === 'dropdown' || q.type === 'radio' || q.type === 'checkbox') && (
-                                <div className="options-editor">
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                    <label style={{ margin: 0, fontWeight: 'bold' }}>{t('forms.field_options')}</label>
-                                    <button
-                                      type="button"
-                                      className={`btn-discreet ${bulkEditQuestionId === q.id ? 'active' : ''}`}
-                                      onClick={() => bulkEditQuestionId === q.id ? setBulkEditQuestionId(null) : handleOpenBulkEdit(q)}
-                                      style={{ fontSize: '0.75rem', padding: '2px 8px' }}
-                                    >
-                                      {bulkEditQuestionId === q.id ? t('common.cancel') : `✨ ${t('forms.bulk_add')}`}
-                                    </button>
-                                  </div>
-
-                                  {bulkEditQuestionId === q.id ? (
-                                    <div className="bulk-editor-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                      <textarea
-                                        className="form-input textarea"
-                                        style={{ minHeight: '120px', fontSize: '0.9rem', lineHeight: '1.4' }}
-                                        placeholder={t('forms.bulk_add_placeholder')}
-                                        value={bulkText}
-                                        onChange={(e) => setBulkText(e.target.value)}
-                                        autoFocus
-                                      />
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                          {t('forms.bulk_add_help')}
-                                        </span>
-                                        <button
-                                          type="button"
-                                          className="btn-primary"
-                                          onClick={() => handleSaveBulkOptions(q.id)}
-                                          style={{ padding: '4px 12px', fontSize: '0.85rem' }}
-                                        >
-                                          {t('common.save')}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      {/* Lista de tags/píldoras existentes */}
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
-                                        {(q.options || []).map((opt, optIndex) => (
-                                          <div
-                                            key={optIndex}
-                                            className="multiselect-pill"
-                                            style={{
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '6px',
-                                              backgroundColor: 'var(--panel-border)',
-                                              border: '1px solid rgba(59, 130, 246, 0.2)',
-                                              color: 'var(--text-main)',
-                                              padding: '4px 10px',
-                                              borderRadius: '16px',
-                                              fontSize: '0.85rem'
-                                            }}
-                                          >
-                                            <span>{opt}</span>
-                                            <span
-                                              className="pill-remove"
-                                              onClick={() => {
-                                                const newOpts = (q.options || []).filter((_, i) => i !== optIndex);
-                                                handleQuestionUpdate(q.id, { options: newOpts });
-                                              }}
-                                              style={{ cursor: 'pointer', fontWeight: 'bold', color: 'var(--text-muted)' }}
-                                              title={t('forms.remove_option')}
-                                            >
-                                              ×
-                                            </span>
-                                          </div>
-                                        ))}
-                                        {(q.options || []).length === 0 && (
-                                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                            {t('forms.no_options')}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {/* Campo para añadir una nueva opción */}
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                          <input
-                                            type="text"
-                                            className={`form-input ${duplicateError?.questionId === q.id ? 'error' : ''}`}
-                                            placeholder={t('forms.add_option_placeholder')}
-                                            id={`new-opt-input-${q.id}`}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                handleAddOption(q.id, e.currentTarget.value);
-                                              }
-                                            }}
-                                            onChange={() => {
-                                              if (duplicateError?.questionId === q.id) setDuplicateError(null);
-                                            }}
-                                            style={{ flex: 1 }}
-                                          />
-                                          <button
-                                            type="button"
-                                            className="btn-secondary"
-                                            onClick={() => {
-                                              const inputEl = document.getElementById(`new-opt-input-${q.id}`) as HTMLInputElement;
-                                              handleAddOption(q.id, inputEl?.value || '');
-                                            }}
-                                            style={{ padding: '0 15px', height: '38px', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}
-                                          >
-                                            {t('common.add')}
-                                          </button>
-                                        </div>
-                                        {duplicateError?.questionId === q.id && (
-                                          <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginLeft: '4px', animation: 'fadeIn 0.2s' }}>
-                                            ⚠️ {t('forms.duplicate_option_error')} ({duplicateError.option})
-                                          </span>
-                                        )}
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
+                                <QuestionAlternativesEditor
+                                  question={q}
+                                  onUpdateOptions={(opts) => handleQuestionUpdate(q.id, { options: opts })}
+                                  t={t}
+                                />
                               )}
                             </div>
                             );
@@ -796,9 +1008,6 @@ export const FormLibraryView = () => {
                           ))
                         )}
 
-                        {selectedForm.questions.length > 0 && (
-                          <button className="btn-primary" style={{ marginTop: '20px', width: '100%', opacity: 0.5 }} disabled>Enviar Formulario</button>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -808,6 +1017,76 @@ export const FormLibraryView = () => {
           )}
         </PanelGroup>
       </div>
+
+      {questionToDelete && (
+        <div className="modal-overlay" onClick={() => setQuestionToDelete(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-card-header">
+              <h2>{t('forms.delete_question_title')}</h2>
+              <button className="btn-close-modal" onClick={() => setQuestionToDelete(null)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-card-body">
+              <p>{t('forms.delete_question_confirm', { name: questionToDelete.label || t('forms.new_question') })}</p>
+            </div>
+
+            <div className="modal-card-footer">
+              <button
+                type="button"
+                className="btn-modal-secondary"
+                onClick={() => setQuestionToDelete(null)}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn-modal-primary"
+                onClick={handleConfirmDeleteQuestion}
+                style={{ backgroundColor: 'var(--danger)' }}
+              >
+                {t('common.delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {formToDelete && (
+        <div className="modal-overlay" onClick={() => setFormToDelete(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-card-header">
+              <h2>{t('forms.delete_form_title')}</h2>
+              <button className="btn-close-modal" onClick={() => setFormToDelete(null)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-card-body">
+              <p>{t('forms.delete_form_questions_confirm', { name: formToDelete.title })}</p>
+            </div>
+
+            <div className="modal-card-footer">
+              <button
+                type="button"
+                className="btn-modal-secondary"
+                onClick={() => setFormToDelete(null)}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn-modal-primary"
+                onClick={handleConfirmDeleteForm}
+                style={{ backgroundColor: 'var(--danger)' }}
+              >
+                {t('common.delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 };

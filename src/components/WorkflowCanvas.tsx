@@ -104,7 +104,8 @@ const WorkflowCanvasContent = () => {
           condition: task.condition,
           skipCondition: task.skipCondition,
           skipLabel: task.skipCondition ? getConditionLabel(task.skipCondition, t('canvas.skip_if')) : null,
-          order: task.order
+          order: task.order,
+          taskType: task.taskType || 'normal'
         },
         selected: selectedTaskId === task.id
       };
@@ -284,8 +285,8 @@ const WorkflowCanvasContent = () => {
   );
 
   const onPaneClick = useCallback(() => {
-    setSelectedTask(null);
-  }, [setSelectedTask]);
+    // No-op: Evita deseleccionar la tarea activa al hacer clic en el fondo del lienzo
+  }, []);
 
   const onNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
     updateTask(node.id, { ui_metadata: { x: node.position.x, y: node.position.y } });
@@ -318,8 +319,7 @@ const WorkflowCanvasContent = () => {
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>{t('canvas.title')}</h3>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn-small" style={{ backgroundColor: '#475569' }} onClick={handleAutoLayout}>✨ {t('canvas.auto_layout')}</button>
-          <button className="btn-small" onClick={handleAddNewTask}>{t('tasks.add_task')}</button>
+          <button className="btn-premium-action" onClick={handleAddNewTask}>{t('tasks.add_task')}</button>
         </div>
       </div>
       <div className="panel-content" style={{ padding: 0 }}>
