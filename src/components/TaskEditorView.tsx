@@ -378,8 +378,8 @@ export const TaskEditorView = () => {
           color: #60a5fa;
         }
         .option-badge.assigned-other {
-          background: rgba(245, 158, 11, 0.12);
-          color: #fbbf24;
+          background: rgba(245, 158, 11, 0.32);
+          color: #765500;
         }
         .dropdown-info-card {
           background: rgba(59, 130, 246, 0.05);
