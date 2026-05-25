@@ -36,8 +36,7 @@ function App() {
     logout,
     saveWorkflowToDb,
     rollbackToVersion,
-    enableOfflineMode,
-    isOfflineMode
+    enableOfflineMode
   } = useWorkflowStore();
 
   // Mount Hook: Auto-login check
