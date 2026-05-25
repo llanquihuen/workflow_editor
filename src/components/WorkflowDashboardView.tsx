@@ -394,9 +394,13 @@ export const WorkflowDashboardView: React.FC = () => {
                         <button
                           className="btn-action-icon text-danger"
                           title={t('common.delete')}
-                          onClick={() => {
+                         onClick={async () => {
                             if (confirm(t('dashboard.delete_confirm'))) {
-                              deleteWorkflow(wf.id);
+                              try {
+                                await deleteWorkflow(wf.id);
+                              } catch (err: any) {
+                                alert(err.message || 'Error al eliminar el workflow.');
+                              }
                             }
                           }}
                         >
