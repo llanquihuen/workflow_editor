@@ -52,6 +52,8 @@ interface WorkflowState {
   errorMessage: string | null;
   workflowHistory: any[];
   
+  isOfflineMode: boolean;
+  enableOfflineMode: () => void;
   checkAuth: () => void;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
@@ -145,10 +147,21 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   // Backend sync states
   isAuthenticated: false,
+  isOfflineMode: false,
   authUsername: null,
   loading: false,
   errorMessage: null,
   workflowHistory: [],
+
+  enableOfflineMode: () => set({
+    isAuthenticated: true,
+    isOfflineMode: true,
+    authUsername: 'Demo Local',
+    workflows: initialWorkflows,
+    workflow: initialActive,
+    loading: false,
+    errorMessage: null
+  }),
 
   checkAuth: () => {
     const token = getAuthToken();
@@ -174,10 +187,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   logout: () => {
     removeAuthToken();
     localStorage.removeItem('bank_workflow_username');
-    set({ isAuthenticated: false, authUsername: null, workflows: initialWorkflows, workflow: initialActive });
+    set({ isAuthenticated: false, isOfflineMode: false, authUsername: null, workflows: initialWorkflows, workflow: initialActive });
   },
 
   fetchWorkflowsFromDb: async () => {
+    if (get().isOfflineMode) return;
     set({ loading: true, errorMessage: null });
     try {
       const apiWorkflows = await api.getWorkflows();
@@ -195,6 +209,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   saveWorkflowToDb: async (changeSummary, newVersion) => {
     set({ loading: true, errorMessage: null });
+    if (get().isOfflineMode) {
+      const active = get().workflow;
+      const activeWithVersion = newVersion ? { ...active, version: newVersion } : active;
+      setTimeout(() => {
+        set((state) => ({
+          workflow: activeWithVersion,
+          workflows: state.workflows.map((w) => (w.id === activeWithVersion.id ? activeWithVersion : w)),
+          loading: false
+        }));
+      }, 300);
+      return;
+    }
+    
     try {
       const active = get().workflow;
       const activeWithVersion = newVersion ? { ...active, version: newVersion } : active;

@@ -35,7 +35,9 @@ function App() {
     login,
     logout,
     saveWorkflowToDb,
-    rollbackToVersion
+    rollbackToVersion,
+    enableOfflineMode,
+    isOfflineMode
   } = useWorkflowStore();
 
   // Mount Hook: Auto-login check
@@ -126,6 +128,13 @@ function App() {
 
             <button type="submit" className="btn-login-submit" disabled={loading}>
               {loading ? 'Validando Firma Digital...' : 'Ingresar de forma Segura'}
+            </button>
+            <button 
+              type="button" 
+              className="btn-offline-mode" 
+              onClick={enableOfflineMode}
+            >
+              Continuar en Modo Local (Mock)
             </button>
           </form>
 
@@ -246,6 +255,30 @@ function App() {
           .btn-login-submit:disabled {
             background: #475569;
             cursor: not-allowed;
+          }
+          .btn-offline-mode {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #94a3b8;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: -10px;
+          }
+          .light-theme .btn-offline-mode {
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            color: #64748b;
+          }
+          .btn-offline-mode:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #f8fafc;
+            border-color: rgba(255, 255, 255, 0.3);
+          }
+          .light-theme .btn-offline-mode:hover {
+            background: rgba(0, 0, 0, 0.03);
+            color: #0f172a;
           }
           .login-error-alert {
             background: rgba(239, 68, 68, 0.15);
