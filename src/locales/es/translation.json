@@ -23,6 +23,7 @@
     "search": "Buscar...",
     "select_option": "-- Selecciona una opción --",
     "error": "Error",
+    "duplicate": "Duplicar",
     "saving": "Guardando",
     "collapse": "Colapsar menú",
     "expand": "Expandir menú",
@@ -183,6 +184,7 @@
     "title": "Workflows",
     "subtitle": "Organiza, gestiona y monitorea todos tus flujos de trabajo de negocio de manera eficiente desde un único panel centralizado.",
     "new_workflow": "Nuevo Workflow",
+    "duplicate_modal_title": "Duplicar Workflow",
     "bulk_changes": "Cambios Masivos",
     "search_placeholder": "Buscar workflows...",
     "all_complexities": "Todas las Complejidades",
@@ -213,6 +215,31 @@
     "statuses": {
       "enabled": "Habilitado",
       "disabled": "Deshabilitado"
+    }
+  },
+  "changes": {
+    "init": "Inicialización del flujo",
+    "rename_workflow": "- Renombrado el flujo a \"{{current}}\" (antes \"{{original}}\")",
+    "enable_workflow": "- Se habilitó el flujo",
+    "disable_workflow": "- Se deshabilitó el flujo",
+    "add_task": "- Añadida la tarea \"{{name}}\"",
+    "delete_task": "- Eliminada la tarea \"{{name}}\"",
+    "modify_task": "- Modificada la tarea \"{{name}}\" (cambio en: {{details}})",
+    "add_form": "- Creado el formulario \"{{title}}\"",
+    "delete_form": "- Eliminado el formulario \"{{title}}\"",
+    "modify_form": "- Modificado el formulario \"{{title}}\" (cambio en: {{details}})",
+    "no_changes": "",
+    "task_fields": {
+      "name": "nombre a \"{{value}}\"",
+      "order": "orden a #{{value}}",
+      "approvers": "aprobadores",
+      "forms": "formularios asociados",
+      "condition": "condición de bifurcación"
+    },
+    "form_fields": {
+      "title": "título a \"{{value}}\"",
+      "description": "descripción",
+      "questions": "preguntas"
     }
   }
 }

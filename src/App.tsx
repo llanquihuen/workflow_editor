@@ -7,6 +7,7 @@ import { TaskEditorView } from './components/TaskEditorView';
 import { FormLibraryView } from './components/FormLibraryView';
 import { WorkflowDashboardView } from './components/WorkflowDashboardView';
 import { useWorkflowStore } from './store/useWorkflowStore';
+import { detectWorkflowChanges } from './utils/changeDetector';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -36,7 +37,8 @@ function App() {
     logout,
     saveWorkflowToDb,
     rollbackToVersion,
-    enableOfflineMode
+    enableOfflineMode,
+    savedWorkflowSnapshot
   } = useWorkflowStore();
 
   // Mount Hook: Auto-login check
@@ -440,7 +442,14 @@ function App() {
             {/* Save and Version History triggers (Bank integrations) */}
             {currentView !== 'dashboard' && workflow && (
               <div className="bank-actions-group">
-                <button className="btn-save-database" onClick={() => setShowSaveModal(true)}>
+                <button
+                  className="btn-save-database"
+                  onClick={() => {
+                    const summary = detectWorkflowChanges(savedWorkflowSnapshot, workflow, t);
+                    setChangeSummary(summary);
+                    setShowSaveModal(true);
+                  }}
+                >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                     <polyline points="17 21 17 13 7 13 7 21" />

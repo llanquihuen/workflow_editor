@@ -23,7 +23,7 @@ interface WorkflowState {
   // Workflow CRUD State
   loadWorkflow: (id: string) => void;
   createNewWorkflow: (name: string) => void;
-  duplicateWorkflow: (id: string) => void;
+  duplicateWorkflow: (id: string, customName?: string) => void;
   deleteWorkflow: (id: string) => Promise<void>;
   toggleWorkflowEnabled: (id: string) => void;
 
@@ -51,6 +51,7 @@ interface WorkflowState {
   loading: boolean;
   errorMessage: string | null;
   workflowHistory: any[];
+  savedWorkflowSnapshot: Workflow | null;
   
   isOfflineMode: boolean;
   enableOfflineMode: () => void;
@@ -125,6 +126,43 @@ const mapFrontendToApi = (wf: Workflow): any => {
   };
 };
 
+const getUniqueWorkflowName = (name: string, workflows: Workflow[], excludeId?: string): string => {
+  const cleanName = name.trim();
+  const isDuplicate = (candidate: string) => {
+    return workflows.some(
+      (w) => w.id !== excludeId && w.name.trim().toLowerCase() === candidate.trim().toLowerCase()
+    );
+  };
+
+  if (!isDuplicate(cleanName)) {
+    return cleanName;
+  }
+
+  // Find first available counter
+  let counter = 1;
+  const match = cleanName.match(/(.*)\s\(Copia\s*(\d*)\)$/i);
+  let baseName = cleanName;
+  if (match) {
+    baseName = match[1].trim();
+    counter = match[2] ? parseInt(match[2], 10) + 1 : 2;
+  } else {
+    const firstCopyName = `${cleanName} (Copia)`;
+    if (!isDuplicate(firstCopyName)) {
+      return firstCopyName;
+    }
+    baseName = cleanName;
+    counter = 2;
+  }
+
+  while (true) {
+    const candidate = `${baseName} (Copia ${counter})`;
+    if (!isDuplicate(candidate)) {
+      return candidate;
+    }
+    counter++;
+  }
+};
+
 
 const rawWorkflowsData = [
   procurementWorkflowData,
@@ -152,6 +190,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   loading: false,
   errorMessage: null,
   workflowHistory: [],
+  savedWorkflowSnapshot: null,
 
   enableOfflineMode: () => set({
     isAuthenticated: true,
@@ -200,6 +239,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       set({
         workflows: mapped.length > 0 ? mapped : initialWorkflows,
         workflow: mapped.length > 0 ? mapped[0] : initialActive,
+        savedWorkflowSnapshot: mapped.length > 0 ? JSON.parse(JSON.stringify(mapped[0])) : JSON.parse(JSON.stringify(initialActive)),
         loading: false
       });
     } catch (e: any) {
@@ -215,6 +255,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       setTimeout(() => {
         set((state) => ({
           workflow: activeWithVersion,
+          savedWorkflowSnapshot: JSON.parse(JSON.stringify(activeWithVersion)),
           workflows: state.workflows.map((w) => (w.id === activeWithVersion.id ? activeWithVersion : w)),
           loading: false
         }));
@@ -231,6 +272,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
       set((state) => ({
         workflow: savedFrontend,
+        savedWorkflowSnapshot: JSON.parse(JSON.stringify(savedFrontend)),
         workflows: state.workflows.map((w) => (w.id === savedFrontend.id ? savedFrontend : w)),
         loading: false
       }));
@@ -269,6 +311,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
       set((state) => ({
         workflow: updatedRollback,
+        savedWorkflowSnapshot: JSON.parse(JSON.stringify(updatedRollback)),
         workflows: state.workflows.map((w) => (w.id === active.id ? updatedRollback : w)),
         loading: false
       }));
@@ -301,6 +344,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
       return {
         workflow: wf,
+        savedWorkflowSnapshot: JSON.parse(JSON.stringify(wf)),
         currentView: 'flow',
         selectedTaskId: wf.tasks?.[0]?.id || null,
         selectedFormId: wf.forms?.[0]?.id || null,
@@ -309,11 +353,12 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   createNewWorkflow: (name) =>
     set((state) => {
+      const uniqueName = getUniqueWorkflowName(name, state.workflows);
       const newId = `WK-${Math.floor(100000 + Math.random() * 900000)}`;
       const taskName = i18n.t('tasks.new_task_default') || 'Paso 1';
       const newWorkflow: Workflow = {
         id: newId,
-        name,
+        name: uniqueName,
         ownerId: state.authUsername || 'admin',
         updatedAt: new Date().toLocaleDateString('en-US'),
         version: 'v1.0',
@@ -342,22 +387,25 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       return {
         workflows: [...state.workflows, newWorkflow],
         workflow: newWorkflow,
+        savedWorkflowSnapshot: JSON.parse(JSON.stringify(newWorkflow)),
         currentView: 'flow',
         selectedTaskId: `${newId}-T-1`,
         selectedFormId: null,
       };
     }),
 
-  duplicateWorkflow: (id) =>
+  duplicateWorkflow: (id, customName) =>
     set((state) => {
       const target = state.workflows.find((wf) => wf.id === id);
       if (!target) return state;
 
       const newId = `WK-${Math.floor(100000 + Math.random() * 900000)}`;
+      const baseName = customName || `${target.name} (Copia)`;
+      const uniqueName = getUniqueWorkflowName(baseName, state.workflows);
       const duplicated: Workflow = {
         ...target,
         id: newId,
-        name: `${target.name} (Copia)`,
+        name: uniqueName,
         ownerId: state.authUsername || 'admin',
         updatedAt: new Date().toLocaleDateString('en-US'),
         version: 'v1.0',
@@ -373,7 +421,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       if (state.isAuthenticated) {
         setTimeout(() => {
           // Select duplicated workflow and save
-          set({ workflow: duplicated });
+          set({ workflow: duplicated, savedWorkflowSnapshot: JSON.parse(JSON.stringify(duplicated)) });
           get().saveWorkflowToDb(`Copiado desde ${target.name}`);
         }, 100);
       }

@@ -33,6 +33,15 @@ export const JsonEditorView = () => {
     timerRef.current = setTimeout(() => {
       try {
         const parsed = JSON.parse(text);
+        if (parsed.name && typeof parsed.name === 'string') {
+          const isDuplicateName = useWorkflowStore.getState().workflows.some(
+            (w) => w.id !== parsed.id && w.name.trim().toLowerCase() === parsed.name.trim().toLowerCase()
+          );
+          if (isDuplicateName) {
+            setError(t('forms.duplicate_name_error') || 'Este nombre de workflow ya existe');
+            return;
+          }
+        }
         updateWorkflow(parsed);
         setError(null);
       } catch (err) {

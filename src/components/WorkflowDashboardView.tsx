@@ -29,6 +29,12 @@ export const WorkflowDashboardView: React.FC = () => {
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [modalError, setModalError] = useState('');
 
+  // Duplicate Modal state
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+  const [workflowToDuplicate, setWorkflowToDuplicate] = useState<{ id: string, name: string } | null>(null);
+  const [duplicateWorkflowName, setDuplicateWorkflowName] = useState('');
+  const [duplicateModalError, setDuplicateModalError] = useState('');
+
   // Dynamic complexity calculator based on task count
   const getComplexity = (tasksCount: number): 'low' | 'medium' | 'high' | 'critical' => {
     if (tasksCount <= 3) return 'low';
@@ -131,6 +137,32 @@ export const WorkflowDashboardView: React.FC = () => {
     createNewWorkflow(newWorkflowName.trim());
     setNewWorkflowName('');
     setIsModalOpen(false);
+  };
+
+  const handleDuplicateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!duplicateWorkflowName.trim()) {
+      setDuplicateModalError(t('tasks.duplicate_name_error') || 'El nombre no puede estar vacío');
+      return;
+    }
+
+    // Check duplicates in workflows list
+    const isDuplicate = workflows.some(
+      (w) => w.name.toLowerCase() === duplicateWorkflowName.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      setDuplicateModalError(
+        t('forms.duplicate_name_error') || 'Este nombre de workflow ya existe'
+      );
+      return;
+    }
+
+    if (workflowToDuplicate) {
+      duplicateWorkflow(workflowToDuplicate.id, duplicateWorkflowName.trim());
+      setIsDuplicateModalOpen(false);
+      setWorkflowToDuplicate(null);
+      setDuplicateWorkflowName('');
+    }
   };
 
   const renderStars = (rating: number) => {
@@ -375,7 +407,12 @@ export const WorkflowDashboardView: React.FC = () => {
                         <button
                           className="btn-action-icon"
                           title={t('common.duplicate') || 'Duplicar'}
-                          onClick={() => duplicateWorkflow(wf.id)}
+                          onClick={() => {
+                            setWorkflowToDuplicate({ id: wf.id, name: wf.name });
+                            setDuplicateWorkflowName(`${wf.name} (Copia)`);
+                            setDuplicateModalError('');
+                            setIsDuplicateModalOpen(true);
+                          }}
                         >
                           <svg
                             width="16"
@@ -487,6 +524,63 @@ export const WorkflowDashboardView: React.FC = () => {
                 </button>
                 <button type="submit" className="btn-modal-primary">
                   {t('dashboard.create_modal_submit')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Blurred Glassmorphism Dialog Modal for Duplication */}
+      {isDuplicateModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsDuplicateModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-card-header">
+              <h2>{t('dashboard.duplicate_modal_title') || t('common.duplicate')}</h2>
+              <button className="btn-close-modal" onClick={() => setIsDuplicateModalOpen(false)}>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleDuplicateSubmit}>
+              <div className="modal-card-body">
+                <div className="form-group">
+                  <label className="modal-label">{t('dashboard.create_modal_label')}</label>
+                  <input
+                    type="text"
+                    className="modal-input"
+                    placeholder={t('dashboard.create_modal_placeholder')}
+                    value={duplicateWorkflowName}
+                    onChange={(e) => {
+                      setDuplicateWorkflowName(e.target.value);
+                      setDuplicateModalError('');
+                    }}
+                    autoFocus
+                  />
+                  {duplicateModalError && <p className="modal-error-message">⚠️ {duplicateModalError}</p>}
+                </div>
+              </div>
+              <div className="modal-card-footer">
+                <button
+                  type="button"
+                  className="btn-modal-secondary"
+                  onClick={() => setIsDuplicateModalOpen(false)}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button type="submit" className="btn-modal-primary">
+                  {t('common.duplicate') || 'Duplicar'}
                 </button>
               </div>
             </form>

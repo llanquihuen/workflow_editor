@@ -23,6 +23,7 @@
     "search": "Search...",
     "select_option": "-- Select an option --",
     "error": "Error",
+    "duplicate": "Duplicate",
     "saving": "Saving",
     "collapse": "Collapse menu",
     "expand": "Expand menu",
@@ -183,6 +184,7 @@
     "title": "Workflows",
     "subtitle": "Efficiently organize, manage, and monitor all your business workflows from a single, centralized dashboard.",
     "new_workflow": "New Workflow",
+    "duplicate_modal_title": "Duplicate Workflow",
     "bulk_changes": "Bulk Changes",
     "search_placeholder": "Search workflows...",
     "all_complexities": "All Complexities",
@@ -213,6 +215,31 @@
     "statuses": {
       "enabled": "Enabled",
       "disabled": "Disabled"
+    }
+  },
+  "changes": {
+    "init": "Workflow initialization",
+    "rename_workflow": "- Renamed workflow to \"{{current}}\" (previously \"{{original}}\")",
+    "enable_workflow": "- Enabled the workflow",
+    "disable_workflow": "- Disabled the workflow",
+    "add_task": "- Added task \"{{name}}\"",
+    "delete_task": "- Deleted task \"{{name}}\"",
+    "modify_task": "- Modified task \"{{name}}\" (change in: {{details}})",
+    "add_form": "- Created form \"{{title}}\"",
+    "delete_form": "- Deleted form \"{{title}}\"",
+    "modify_form": "- Modified form \"{{title}}\" (change in: {{details}})",
+    "no_changes": "",
+    "task_fields": {
+      "name": "name to \"{{value}}\"",
+      "order": "order to #{{value}}",
+      "approvers": "approvers",
+      "forms": "associated forms",
+      "condition": "branching condition"
+    },
+    "form_fields": {
+      "title": "title to \"{{value}}\"",
+      "description": "description",
+      "questions": "questions"
     }
   }
 }
