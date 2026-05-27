@@ -49,7 +49,13 @@
     "change_description_placeholder": "Ej: Modificado flujo de firma o movidos nodos de aprobación",
     "confirm_and_sign": "Confirmar y Firmar Snapshot",
     "confirm_restore_title": "Confirmar Restauración de Versión",
-    "confirm_restore_desc": "¿Estás seguro de que deseas restaurar el flujo a la versión {{version}}? Esto cargará la versión seleccionada y la guardará automáticamente como un nuevo incremento en la base de datos para auditoría."
+    "confirm_restore_desc": "¿Estás seguro de que deseas restaurar el flujo a la versión {{version}}? Esto cargará la versión seleccionada y la guardará automáticamente como un nuevo incremento en la base de datos para auditoría.",
+    "save_version_governance": "Gobernanza de Versión de Proceso (Compliance)",
+    "save_current_version": "Versión Actual",
+    "save_next_version": "Nueva Versión al Guardar",
+    "warning_orphan_forms": "ADVERTENCIA: Formularios Huérfanos",
+    "warning_orphan_forms_desc": "No es posible firmar ni guardar. Existen formularios en la biblioteca global que no están vinculados a ninguna tarea:",
+    "warning_orphan_forms_help": "* Vincula estos formularios a algún paso o elimínalos en la pestaña \"Form Library\" antes de continuar."
   },
   "forms": {
     "title": "Formularios",
@@ -178,7 +184,21 @@
     "iso_approvers_placeholder": "Este paso requiere supervisión especializada y será revisado directamente por los Oficiales de Seguridad de la Información (ISO) del banco.",
     "selected_approvers_label": "Aprobadores Asignados",
     "no_approvers_assigned": "Aún no se han asignado aprobadores.",
-    "assigned_to_step": "Asignado al paso: {{stepName}}"
+    "assigned_to_step": "Asignado al paso: {{stepName}}",
+    "expiration_and_notifications": "Expiración y Notificaciones",
+    "expiration_and_notifications_desc": "Configuración avanzada de vencimiento, recordatorios automáticos y envío de notificaciones por correo.",
+    "all_approvers_required_label": "¿Requiere aprobación de TODOS los aprobadores asignados?",
+    "expiration_days_label": "Días de Expiración (Plazo Límite)",
+    "expiration_days_desc": "Define el número máximo de días hábiles antes de que la tarea expire automáticamente.",
+    "email_prefs_title": "Preferencias de Correo y Alertabilidad",
+    "send_mail_label": "Enviar alerta por correo al asignarse la tarea",
+    "send_wf_label": "Enviar PDF/Resumen del workflow a los participantes",
+    "send_other_label": "Notificar a personas externas/observadores",
+    "reminders_label": "Frecuencia de Recordatorios de Correo",
+    "reminders_placeholder": "Ej: Diario, Cada 3 días, etc. (vacío para desactivar)",
+    "other_participants_label": "Otros Destinatarios (Separados por comas)",
+    "expiration_days_placeholder": "Ej: 5 (0 para ilimitado)",
+    "other_participants_placeholder": "ejemplo1@banco.com, observador@banco.com"
   },
   "dashboard": {
     "title": "Workflows",
@@ -206,6 +226,7 @@
     "create_modal_label": "Nombre del Workflow",
     "create_modal_placeholder": "Escribe el nombre del workflow...",
     "create_modal_submit": "Crear Workflow",
+    "workflow_settings": "Configuración del Workflow",
     "complexities": {
       "low": "BAJA",
       "medium": "MEDIA",
@@ -215,7 +236,14 @@
     "statuses": {
       "enabled": "Habilitado",
       "disabled": "Deshabilitado"
-    }
+    },
+    "workflow_settings_owner": "Dueño del Flujo (Owner)",
+    "workflow_settings_checker": "Verificador del Flujo (Checker)",
+    "workflow_settings_maker": "Creador (Maker)",
+    "workflow_settings_creation_date": "Fecha Creación",
+    "workflow_settings_select_owner": "Selecciona el Dueño",
+    "workflow_settings_select_checker": "Sin verificador asignado",
+    "workflow_settings_desc": "Configura la gobernanza y asignación de responsabilidad de este flujo de trabajo."
   },
   "changes": {
     "init": "Inicialización del flujo",

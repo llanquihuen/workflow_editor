@@ -36,6 +36,14 @@ export interface TaskCondition {
   value: string;
 }
 
+export interface NotificationSettings {
+  sendMail: boolean;
+  sendWorkflowToParticipants: boolean;
+  sendOtherUsers: boolean;
+  sendMailReminders: string;
+  sendMailOtherParticipants: string[];
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -46,6 +54,10 @@ export interface Task {
   condition?: TaskCondition;
   skipCondition?: TaskCondition;
   taskType?: 'normal' | 'dynamic' | 'iso';
+  allApproverRequired?: boolean;
+  expirationDays?: number;
+  notificationSettings?: NotificationSettings;
+  forms?: Form[]; // Utilizado exclusivamente para compatibilidad de anidamiento en la base de datos/API
 }
 
 export interface Workflow {
@@ -58,5 +70,9 @@ export interface Workflow {
   version?: string;
   rating?: number;
   enabled?: boolean;
+  creationDate?: string;
+  makerId?: string;
+  checkerId?: string;
+  ownerName?: string;
 }
 

@@ -8,12 +8,14 @@ import { FormLibraryView } from './components/FormLibraryView';
 import { WorkflowDashboardView } from './components/WorkflowDashboardView';
 import { useWorkflowStore } from './store/useWorkflowStore';
 import { detectWorkflowChanges } from './utils/changeDetector';
+import { WorkflowSettingsModal } from './components/WorkflowSettingsModal';
 
 function App() {
   const { t, i18n } = useTranslation();
   const [showJson, setShowJson] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [changeSummary, setChangeSummary] = useState('');
   const [versionToRestore, setVersionToRestore] = useState<string | null>(null);
   
@@ -41,6 +43,10 @@ function App() {
     savedWorkflowSnapshot
   } = useWorkflowStore();
 
+  const assignedFormIds = new Set((workflow?.tasks || []).flatMap((t) => t.formIds || []));
+  const unassignedForms = (workflow?.forms || []).filter((f) => !assignedFormIds.has(f.id));
+  const hasUnassignedForms = unassignedForms.length > 0;
+
   // Mount Hook: Auto-login check
   useEffect(() => {
     checkAuth();
@@ -56,32 +62,20 @@ function App() {
     }
   };
 
-  const [versionOption, setVersionOption] = useState<'minor' | 'major' | 'keep'>('keep');
-
-  const getNextVersion = (currentVersion: string, option: 'minor' | 'major' | 'keep'): string => {
-    const ver = currentVersion || 'v1.0';
-    const match = ver.match(/v?(\d+)\.(\d+)/);
-    if (!match) return ver;
-    
-    const major = parseInt(match[1], 10);
-    const minor = parseInt(match[2], 10);
-    
-    if (option === 'minor') {
-      return `v${major}.${minor + 1}`;
-    } else if (option === 'major') {
-      return `v${major + 1}.0`;
-    }
-    return ver;
+  const getNextVersion = (currentVersion: string): string => {
+    const ver = currentVersion || 'v1';
+    const match = ver.match(/v?(\d+)/);
+    const currentNum = match ? parseInt(match[1], 10) : 1;
+    return `v${currentNum + 1}`;
   };
 
   const handleSaveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const nextVer = getNextVersion(workflow.version || 'v1.0', versionOption);
+      const nextVer = getNextVersion(workflow.version || 'v1');
       await saveWorkflowToDb(changeSummary || 'Actualización de flujo visual', nextVer);
       setShowSaveModal(false);
       setChangeSummary('');
-      setVersionOption('minor');
     } catch (err) {
       // handled in store
     }
@@ -443,6 +437,18 @@ function App() {
             {currentView !== 'dashboard' && workflow && (
               <div className="bank-actions-group">
                 <button
+                  className="btn-toggle-history"
+                  onClick={() => setShowSettingsModal(true)}
+                  style={{ marginRight: '6px' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                  
+                </button>
+
+                <button
                   className="btn-save-database"
                   onClick={() => {
                     const summary = detectWorkflowChanges(savedWorkflowSnapshot, workflow, t);
@@ -665,41 +671,57 @@ function App() {
           <div className="modal-glass-card">
             <h3>{t('common.confirm_save_modal_title')}</h3>
             <p>{t('common.save_modal_desc')}</p>
+
+            {hasUnassignedForms && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '8px',
+                padding: '14px',
+                marginBottom: '20px',
+                fontSize: '13.5px',
+                color: '#f87171',
+                lineHeight: '1.5'
+              }}>
+                <span style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontSize: '14px' }}>
+                  ⚠️ {t('common.warning_orphan_forms')}
+                </span>
+                <p style={{ margin: '0 0 8px 0', opacity: 0.9 }}>
+                  {t('common.warning_orphan_forms_desc')}
+                </p>
+                <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
+                  {unassignedForms.map(f => (
+                    <li key={f.id} style={{ fontWeight: '600' }}>{f.title}</li>
+                  ))}
+                </ul>
+                <p style={{ margin: '8px 0 0 0', fontSize: '12px', opacity: 0.8, fontStyle: 'italic' }}>
+                  {t('common.warning_orphan_forms_help')}
+                </p>
+              </div>
+            )}
             
             <form onSubmit={handleSaveSubmit}>
               <div className="form-group-modal" style={{ marginBottom: '20px' }}>
-                <label>{t('common.version_control_label', { version: workflow.version || 'v1.0' })}</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', textTransform: 'none', letterSpacing: 'normal', color: 'inherit', fontWeight: 'normal', cursor: 'pointer' }}>
-                    <input
-                        type="radio"
-                        name="versionOption"
-                        value="keep"
-                        checked={versionOption === 'keep'}
-                        onChange={() => setVersionOption('keep')}
-                    />
-                    {t('common.keep_version').split('—')[0].trim()} ({workflow.version || 'v1.0'}) — {t('common.keep_version').split('—')[1]?.trim()}
-                  </label>
-                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', textTransform: 'none', letterSpacing: 'normal', color: 'inherit', fontWeight: 'normal', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="versionOption"
-                      value="minor"
-                      checked={versionOption === 'minor'}
-                      onChange={() => setVersionOption('minor')}
-                    />
-                    {t('common.minor_increment').split('—')[0].trim()} ({getNextVersion(workflow.version || 'v1.0', 'minor')}) — {t('common.minor_increment').split('—')[1]?.trim()}
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', textTransform: 'none', letterSpacing: 'normal', color: 'inherit', fontWeight: 'normal', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="versionOption"
-                      value="major"
-                      checked={versionOption === 'major'}
-                      onChange={() => setVersionOption('major')}
-                    />
-                    {t('common.major_increment').split('—')[0].trim()} ({getNextVersion(workflow.version || 'v1.0', 'major')}) — {t('common.major_increment').split('—')[1]?.trim()}
-                  </label>
+                <label>{t('common.save_version_governance')}</label>
+                <div style={{
+                  background: 'rgba(99, 102, 241, 0.05)',
+                  border: '1px solid rgba(99, 102, 241, 0.15)',
+                  borderRadius: '6px',
+                  padding: '12px 14px',
+                  marginTop: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)' }}>{t('common.save_current_version')}</span>
+                    <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>{workflow.version || 'v1'}</strong>
+                  </div>
+                  <div style={{ fontSize: '16px', color: 'var(--primary)', fontWeight: 'bold' }}>➔</div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)' }}>{t('common.save_next_version')}</span>
+                    <strong style={{ fontSize: '14px', color: '#10b981' }}>{getNextVersion(workflow.version || 'v1')}</strong>
+                  </div>
                 </div>
               </div>
 
@@ -717,7 +739,19 @@ function App() {
                 <button type="button" className="btn-modal-cancel" onClick={() => setShowSaveModal(false)}>
                   {t('common.cancel')}
                 </button>
-                <button type="submit" className="btn-modal-confirm">
+                <button
+                  type="submit"
+                  className="btn-modal-confirm"
+                  disabled={hasUnassignedForms}
+                  style={hasUnassignedForms ? {
+                    background: '#334155',
+                    color: '#94a3b8',
+                    cursor: 'not-allowed',
+                    opacity: 0.5,
+                    boxShadow: 'none',
+                    border: '1px solid rgba(255,255,255,0.05)'
+                  } : {}}
+                >
                   {t('common.confirm_and_sign')}
                 </button>
               </div>
@@ -760,6 +794,12 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Workflow Settings Modal */}
+      <WorkflowSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
 
       <style>{`
         .active-ver-badge {

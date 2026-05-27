@@ -81,11 +81,13 @@ const enrichWorkflow = (wf: any, index: number): Workflow => {
   const id = wf.id || `WK12345${index + 1}`;
   const ownerId = wf.ownerId || `usr-${(index % 20) + 1}`;
   const updatedAt = wf.updatedAt || '05/18/2026';
-  const version = wf.version || 'v 1';
+  const version = wf.version || 'v1.0';
   const rating = wf.rating || (5 - (index % 2));
   const enabled = wf.enabled !== undefined ? wf.enabled : true;
 
-  return {
+  const ownerName = wf.ownerName || 'System Administrator';
+
+  const enriched = {
     ...wf,
     id,
     ownerId,
@@ -93,13 +95,53 @@ const enrichWorkflow = (wf: any, index: number): Workflow => {
     version,
     rating,
     enabled,
+    creationDate: wf.creationDate || '05/18/2026',
+    makerId: wf.makerId || 'admin',
+    checkerId: wf.checkerId || 'usr-20', // Gabriel Herrera (Dirección)
+    ownerName,
     tasks: wf.tasks || [],
     forms: wf.forms || [],
-  } as Workflow;
+  };
+
+  return mapApiToFrontend(enriched);
 };
 
 // Mappers between API models and Frontend models
-const mapApiToFrontend = (apiWf: any): Workflow => {
+export const mapApiToFrontend = (apiWf: any): Workflow => {
+  const extractedForms: Form[] = [];
+  const seenFormIds = new Set<string>();
+
+  const mappedTasks = (apiWf.tasks || []).map((task: any) => {
+    const formIds = [...(task.formIds || [])];
+    if (task.forms && Array.isArray(task.forms)) {
+      task.forms.forEach((form: any) => {
+        if (form && form.id) {
+          if (!seenFormIds.has(form.id)) {
+            extractedForms.push(form);
+            seenFormIds.add(form.id);
+          }
+          if (!formIds.includes(form.id)) {
+            formIds.push(form.id);
+          }
+        }
+      });
+    }
+    const { forms, ...taskRest } = task;
+    return {
+      ...taskRest,
+      formIds
+    };
+  });
+
+  if (apiWf.forms && Array.isArray(apiWf.forms)) {
+    apiWf.forms.forEach((form: any) => {
+      if (form && form.id && !seenFormIds.has(form.id)) {
+        extractedForms.push(form);
+        seenFormIds.add(form.id);
+      }
+    });
+  }
+
   return {
     id: apiWf.id,
     name: apiWf.name,
@@ -108,12 +150,27 @@ const mapApiToFrontend = (apiWf: any): Workflow => {
     updatedAt: apiWf.updatedAt || new Date().toLocaleDateString('en-US'),
     rating: apiWf.rating || 5,
     enabled: apiWf.enabled !== undefined ? apiWf.enabled : true,
-    tasks: apiWf.tasks || [],
-    forms: apiWf.forms || []
+    creationDate: apiWf.creationDate || new Date().toLocaleDateString('en-US'),
+    makerId: apiWf.makerId || 'admin',
+    checkerId: apiWf.checkerId || '',
+    ownerName: apiWf.ownerName || 'System Administrator',
+    tasks: mappedTasks,
+    forms: extractedForms
   };
 };
 
-const mapFrontendToApi = (wf: Workflow): any => {
+export const mapFrontendToApi = (wf: Workflow): any => {
+  const mappedTasks = (wf.tasks || []).map((task) => {
+    const nestedForms = (task.formIds || [])
+      .map((fid) => (wf.forms || []).find((f) => f.id === fid))
+      .filter((f): f is Form => !!f);
+
+    return {
+      ...task,
+      forms: nestedForms
+    };
+  });
+
   return {
     id: wf.id,
     name: wf.name,
@@ -121,8 +178,12 @@ const mapFrontendToApi = (wf: Workflow): any => {
     ownerId: wf.ownerId || 'admin',
     rating: wf.rating || 5,
     enabled: wf.enabled,
-    tasks: wf.tasks || [],
-    forms: wf.forms || []
+    creationDate: wf.creationDate || new Date().toLocaleDateString('en-US'),
+    makerId: wf.makerId || 'admin',
+    checkerId: wf.checkerId || '',
+    ownerName: wf.ownerName || 'System Administrator',
+    tasks: mappedTasks
+    // forms en la raíz ha sido eliminado por completo para cumplir con la nueva estructura
   };
 };
 
@@ -249,8 +310,16 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   saveWorkflowToDb: async (changeSummary, newVersion) => {
     set({ loading: true, errorMessage: null });
+    const active = get().workflow;
+    const assignedFormIds = new Set((active.tasks || []).flatMap((t) => t.formIds || []));
+    const unassignedForms = (active.forms || []).filter((f) => !assignedFormIds.has(f.id));
+    if (unassignedForms.length > 0) {
+      const errorMsg = `No se pueden guardar los cambios. Existen formularios huérfanos sin asignar a ningún paso del flujo: ${unassignedForms.map(f => `"${f.title}"`).join(', ')}. Por favor vincula estos formularios a alguna tarea o elimínalos antes de continuar.`;
+      set({ loading: false, errorMessage: errorMsg });
+      throw new Error(errorMsg);
+    }
+
     if (get().isOfflineMode) {
-      const active = get().workflow;
       const activeWithVersion = newVersion ? { ...active, version: newVersion } : active;
       setTimeout(() => {
         set((state) => ({
@@ -360,6 +429,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         id: newId,
         name: uniqueName,
         ownerId: state.authUsername || 'admin',
+        ownerName: state.authUsername || 'System Administrator',
+        creationDate: new Date().toLocaleDateString('en-US'),
+        makerId: state.authUsername || 'admin',
+        checkerId: '',
         updatedAt: new Date().toLocaleDateString('en-US'),
         version: 'v1.0',
         rating: 5,
@@ -407,6 +480,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         id: newId,
         name: uniqueName,
         ownerId: state.authUsername || 'admin',
+        ownerName: state.authUsername || target.ownerName || 'System Administrator',
+        creationDate: new Date().toLocaleDateString('en-US'),
+        makerId: state.authUsername || 'admin',
+        checkerId: target.checkerId || '',
         updatedAt: new Date().toLocaleDateString('en-US'),
         version: 'v1.0',
         rating: 5,

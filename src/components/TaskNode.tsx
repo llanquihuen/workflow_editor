@@ -1,18 +1,12 @@
-import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { useWorkflowStore } from '../store/useWorkflowStore';
 
 export const TaskNode = ({ id, data, selected }: NodeProps) => {
   const { t } = useTranslation();
-  const { workflow, updateTask, reorderTask, deleteTask } = useWorkflowStore();
+  const { workflow, reorderTask, deleteTask } = useWorkflowStore();
   
-  const [localName, setLocalName] = useState(String(data.label || ''));
-
-  useEffect(() => {
-    setLocalName(String(data.label || ''));
-  }, [data.label]);
-
+  const taskName = String(data.label || '');
   const approversList = data.approvers as string[];
   const formTitles = data.formTitles as string[];
   const hasSkipCondition = Boolean(data.skipCondition);
@@ -21,26 +15,6 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
   const taskIndex = workflow.tasks.findIndex(t => t.id === id);
   const isFirst = taskIndex === 0;
   const isLast = taskIndex === workflow.tasks.length - 1;
-
-  const isDuplicateTaskName = (name: string, taskId?: string) => {
-    return workflow.tasks.some(t => t.id !== taskId && t.name.toLowerCase() === name.toLowerCase().trim());
-  };
-
-  const handleNameBlur = () => {
-    if (localName.trim() !== data.label) {
-      if (isDuplicateTaskName(localName, id) || localName.trim() === '') {
-        setLocalName(String(data.label || ''));
-      } else {
-        updateTask(id, { name: localName.trim() });
-      }
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      (e.target as HTMLInputElement).blur();
-    }
-  };
 
   return (
     <div
@@ -53,14 +27,13 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
         <span className="node-badge badge-order">
           {String(data.order || '')}
         </span>
-        <input 
-          type="text" 
-          className="node-input nodrag" 
-          value={localName}
-          onChange={(e) => setLocalName(e.target.value)}
-          onBlur={handleNameBlur}
-          onKeyDown={handleKeyDown}
-        />
+        <div 
+          className="node-title" 
+          style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} 
+          title={taskName}
+        >
+          {taskName}
+        </div>
         <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
           {Boolean(data.condition) && (
             <span 
@@ -117,7 +90,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
               disabled={isFirst} 
               onClick={(e) => { 
                 e.stopPropagation(); 
-                if(confirm(t('tasks.delete_confirm', { name: localName }))) deleteTask(id); 
+                if(confirm(t('tasks.delete_confirm', { name: taskName }))) deleteTask(id); 
               }}
               title={t('common.delete')}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}

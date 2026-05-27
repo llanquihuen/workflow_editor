@@ -49,7 +49,13 @@
     "change_description_placeholder": "E.g., Modified signature flow or moved approval nodes",
     "confirm_and_sign": "Confirm and Sign Snapshot",
     "confirm_restore_title": "Confirm Version Restoration",
-    "confirm_restore_desc": "Are you sure you want to restore the workflow to version {{version}}? This will load the selected version and automatically save it as a new increment in the database for auditing."
+    "confirm_restore_desc": "Are you sure you want to restore the workflow to version {{version}}? This will load the selected version and automatically save it as a new increment in the database for auditing.",
+    "save_version_governance": "Process Version Governance (Compliance)",
+    "save_current_version": "Current Version",
+    "save_next_version": "New Version on Save",
+    "warning_orphan_forms": "WARNING: Orphan Forms",
+    "warning_orphan_forms_desc": "Cannot sign or save. There are forms in the global library that are not linked to any task:",
+    "warning_orphan_forms_help": "* Link these forms to a step or delete them in the \"Form Library\" tab before continuing."
   },
   "forms": {
     "title": "Forms",
@@ -178,7 +184,21 @@
     "iso_approvers_placeholder": "This step requires specialized oversight and will be reviewed directly by the bank's Information Security Officers.",
     "selected_approvers_label": "Assigned Approvers",
     "no_approvers_assigned": "No approvers assigned yet.",
-    "assigned_to_step": "Assigned to step: {{stepName}}"
+    "assigned_to_step": "Assigned to step: {{stepName}}",
+    "expiration_and_notifications": "Expiration & Notifications",
+    "expiration_and_notifications_desc": "Advanced settings for task expiration, automatic reminders, and automated email alerts.",
+    "all_approvers_required_label": "Requires approval from ALL assigned approvers?",
+    "expiration_days_label": "Expiration Days (Time Limit)",
+    "expiration_days_desc": "Defines the maximum business days before this task expires automatically.",
+    "email_prefs_title": "Email & Alerting Preferences",
+    "send_mail_label": "Send email alert when task is assigned",
+    "send_wf_label": "Send workflow summary/PDF to participants",
+    "send_other_label": "Notify external users/observers",
+    "reminders_label": "Email Reminders Frequency",
+    "reminders_placeholder": "E.g., Daily, Every 3 days, etc. (empty to disable)",
+    "other_participants_label": "Other Recipients (Comma separated)",
+    "expiration_days_placeholder": "E.g., 5 (0 for unlimited)",
+    "other_participants_placeholder": "example1@bank.com, observer@bank.com"
   },
   "dashboard": {
     "title": "Workflows",
@@ -206,6 +226,7 @@
     "create_modal_label": "Workflow Name",
     "create_modal_placeholder": "Enter workflow name...",
     "create_modal_submit": "Create Workflow",
+    "workflow_settings": "Workflow Settings",
     "complexities": {
       "low": "LOW",
       "medium": "MEDIUM",
@@ -215,7 +236,14 @@
     "statuses": {
       "enabled": "Enabled",
       "disabled": "Disabled"
-    }
+    },
+    "workflow_settings_owner": "Workflow Owner",
+    "workflow_settings_checker": "Workflow Checker",
+    "workflow_settings_maker": "Creator (Maker)",
+    "workflow_settings_creation_date": "Creation Date",
+    "workflow_settings_select_owner": "Select Workflow Owner",
+    "workflow_settings_select_checker": "No checker assigned",
+    "workflow_settings_desc": "Configure the governance and responsibility assignment for this workflow."
   },
   "changes": {
     "init": "Workflow initialization",

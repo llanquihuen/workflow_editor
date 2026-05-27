@@ -277,6 +277,26 @@ const WorkflowCanvasContent = () => {
     return () => clearTimeout(timer);
   }, [fitView, tasksOrderSignature, edgesSignature]);
 
+  const lastCenteredTaskId = useRef<string | null>(null);
+
+  // Smoothly center on the selected task when selectedTaskId changes
+  useEffect(() => {
+    if (selectedTaskId && selectedTaskId !== lastCenteredTaskId.current) {
+      const targetNode = nodes.find(n => n.id === selectedTaskId);
+      if (targetNode) {
+        lastCenteredTaskId.current = selectedTaskId;
+        fitView({
+          nodes: [{ id: selectedTaskId }],
+          duration: 500,
+          padding: 0.3,
+          maxZoom: 0.78
+        });
+      }
+    } else if (!selectedTaskId) {
+      lastCenteredTaskId.current = null;
+    }
+  }, [selectedTaskId, fitView, nodes]);
+
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       setSelectedTask(node.id);

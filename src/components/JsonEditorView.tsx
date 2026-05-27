@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Editor from '@monaco-editor/react';
-import { useWorkflowStore } from '../store/useWorkflowStore';
+import { useWorkflowStore, mapFrontendToApi, mapApiToFrontend } from '../store/useWorkflowStore';
 
 export const JsonEditorView = () => {
   const { t } = useTranslation();
@@ -12,11 +12,12 @@ export const JsonEditorView = () => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const newString = JSON.stringify(workflow, null, 2);
+    const apiPayload = mapFrontendToApi(workflow);
+    const newString = JSON.stringify(apiPayload, null, 2);
     // Solo actualizar el editor si el cambio viene de otro componente (no es igual al texto actual)
     setJsonText(prev => {
       try {
-        if (JSON.stringify(JSON.parse(prev)) === JSON.stringify(workflow)) {
+        if (JSON.stringify(JSON.parse(prev)) === JSON.stringify(apiPayload)) {
            return prev; // Mantiene el formato del usuario si semánticamente es igual
         }
       } catch(e) {}
@@ -42,7 +43,8 @@ export const JsonEditorView = () => {
             return;
           }
         }
-        updateWorkflow(parsed);
+        const frontendWf = mapApiToFrontend(parsed);
+        updateWorkflow(frontendWf);
         setError(null);
       } catch (err) {
         if (err instanceof Error) {

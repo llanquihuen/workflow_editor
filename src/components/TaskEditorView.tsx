@@ -184,6 +184,24 @@ export const TaskEditorView = () => {
     }
   };
 
+  const updateNotificationSetting = (key: string, value: any) => {
+    if (selectedTask) {
+      const currentSettings = selectedTask.notificationSettings || {
+        sendMail: false,
+        sendWorkflowToParticipants: false,
+        sendOtherUsers: false,
+        sendMailReminders: '',
+        sendMailOtherParticipants: []
+      };
+      updateTask(selectedTask.id, {
+        notificationSettings: {
+          ...currentSettings,
+          [key]: value
+        }
+      });
+    }
+  };
+
   const handleReorderForm = (formId: string, direction: 'up' | 'down') => {
     if (!selectedTask || !selectedTask.formIds) return;
     const currentIds = [...selectedTask.formIds];
@@ -984,7 +1002,7 @@ export const TaskEditorView = () => {
                 {selectedTask.order}
               </span>
               <span style={{ 
-                maxWidth: '120px', 
+                maxWidth: '200px',
                 overflow: 'hidden', 
                 textOverflow: 'ellipsis', 
                 whiteSpace: 'nowrap' 
@@ -1325,6 +1343,21 @@ export const TaskEditorView = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Requirement Checkbox */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px' }}>
+                    <label className="ios-switch" style={{ width: '40px', height: '22px', display: 'inline-block', position: 'relative' }}>
+                      <input
+                          type="checkbox"
+                          checked={selectedTask.allApproverRequired || false}
+                          onChange={(e) => updateTask(selectedTask.id, { allApproverRequired: e.target.checked })}
+                      />
+                      <span className="ios-slider"></span>
+                    </label>
+                    <span style={{ fontSize: '13.5px', fontWeight: '500', color: 'var(--text-main)' }}>
+                      {t('tasks.all_approvers_required_label')}
+                    </span>
+                  </div>
                 </div>
               ) : selectedTask.taskType === 'dynamic' ? (
                 <div className="editor-field" style={{ marginTop: '16px' }}>
@@ -1654,6 +1687,112 @@ export const TaskEditorView = () => {
                 )}
               </div>
             )}
+            {/* New section: Expiración y Notificaciones */}
+            <div className="editor-section">
+              <h4>{t('tasks.expiration_and_notifications')}</h4>
+              <p className="form-desc" style={{ marginBottom: '15px' }}>
+                {t('tasks.expiration_and_notifications_desc')}
+              </p>
+
+              {/* Expiration Days input */}
+              <div className="editor-field" style={{ marginTop: '15px' }}>
+                <label>{t('tasks.expiration_days_label')}</label>
+                <input
+                    type="number"
+                    className="form-input"
+                    min={0}
+                    placeholder={t('tasks.expiration_days_placeholder')}
+                    value={selectedTask.expirationDays || ''}
+                    onChange={(e) => updateTask(selectedTask.id, { expirationDays: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                />
+                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {t('tasks.expiration_days_desc')}
+                </span>
+              </div>
+
+              {/* Sub-section: Notificaciones por correo */}
+              <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '15px' }}>
+                <h5 style={{ margin: '0 0 12px 0', fontSize: '11.5px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '0.05em', fontWeight: '700' }}>
+                  {t('tasks.email_prefs_title')}
+                </h5>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                  {/* SendMail switch */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label className="ios-switch" style={{ width: '40px', height: '22px', flexShrink: 0, display: 'inline-block', position: 'relative' }}>
+                      <input
+                          type="checkbox"
+                          checked={selectedTask.notificationSettings?.sendMail || false}
+                          onChange={(e) => updateNotificationSetting('sendMail', e.target.checked)}
+                      />
+                      <span className="ios-slider"></span>
+                    </label>
+                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>
+                      {t('tasks.send_mail_label')}
+                    </span>
+                  </div>
+
+                  {/* SendWorkflowToParticipants switch */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label className="ios-switch" style={{ width: '40px', height: '22px', flexShrink: 0, display: 'inline-block', position: 'relative' }}>
+                      <input
+                          type="checkbox"
+                          checked={selectedTask.notificationSettings?.sendWorkflowToParticipants || false}
+                          onChange={(e) => updateNotificationSetting('sendWorkflowToParticipants', e.target.checked)}
+                      />
+                      <span className="ios-slider"></span>
+                    </label>
+                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>
+                      {t('tasks.send_wf_label')}
+                    </span>
+                  </div>
+
+                  {/* SendOtherUsers switch */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label className="ios-switch" style={{ width: '40px', height: '22px', flexShrink: 0, display: 'inline-block', position: 'relative' }}>
+                      <input
+                          type="checkbox"
+                          checked={selectedTask.notificationSettings?.sendOtherUsers || false}
+                          onChange={(e) => updateNotificationSetting('sendOtherUsers', e.target.checked)}
+                      />
+                      <span className="ios-slider"></span>
+                    </label>
+                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>
+                      {t('tasks.send_other_label')}
+                    </span>
+                  </div>
+
+                  {/* Reminders input */}
+                  <div className="editor-field" style={{ marginTop: '6px' }}>
+                    <label>{t('tasks.reminders_label')}</label>
+                    <input
+                        type="text"
+                        className="form-input"
+                        placeholder={t('tasks.reminders_placeholder')}
+                        value={selectedTask.notificationSettings?.sendMailReminders || ''}
+                        onChange={(e) => updateNotificationSetting('sendMailReminders', e.target.value)}
+                    />
+                  </div>
+
+                  {/* Other participants emails comma separated */}
+                  <div className="editor-field">
+                    <label>{t('tasks.other_participants_label')}</label>
+                    <input
+                        type="text"
+                        className="form-input"
+                        placeholder={t('tasks.other_participants_placeholder')}
+                        value={selectedTask.notificationSettings?.sendMailOtherParticipants?.join(', ') || ''}
+                        onChange={(e) => {
+                          const list = e.target.value.split(',').map(item => item.trim()).filter(Boolean);
+                          updateNotificationSetting('sendMailOtherParticipants', list);
+                        }}
+                    />
+                  </div>
+
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
