@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { useWorkflowStore } from '../store/useWorkflowStore';
@@ -47,13 +47,96 @@ const getQuestionNumberMap = (questions: FormQuestion[]) => {
   return numberMap;
 };
 
+interface QuestionNode {
+  question: FormQuestion;
+  children: QuestionNode[];
+}
+
+const buildQuestionTree = (questions: FormQuestion[]): QuestionNode[] => {
+  const nodesMap = new Map<string, QuestionNode>();
+  questions.forEach(q => {
+    nodesMap.set(q.id, { question: q, children: [] });
+  });
+
+  const roots: QuestionNode[] = [];
+  questions.forEach(q => {
+    const node = nodesMap.get(q.id)!;
+    const parentId = q.condition?.questionId;
+    const hasValidParent = !!parentId && questions.some(pq => pq.id === parentId);
+
+    if (!hasValidParent || !parentId || parentId === q.id) {
+      roots.push(node);
+    } else {
+      const parentNode = nodesMap.get(parentId);
+      if (parentNode) {
+        parentNode.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+  });
+
+  return roots;
+};
+
+const findNodeAndParentList = (
+  nodes: QuestionNode[],
+  targetId: string
+): { list: QuestionNode[]; index: number; parentNode: QuestionNode | null } | null => {
+  const idx = nodes.findIndex(n => n.question.id === targetId);
+  if (idx !== -1) {
+    return { list: nodes, index: idx, parentNode: null };
+  }
+  for (const node of nodes) {
+    const result = findNodeAndParentList(node.children, targetId);
+    if (result) {
+      if (result.parentNode === null) {
+        result.parentNode = node;
+      }
+      return result;
+    }
+  }
+  return null;
+};
+
+const flattenQuestionTree = (nodes: QuestionNode[]): FormQuestion[] => {
+  const flat: FormQuestion[] = [];
+  const traverse = (node: QuestionNode) => {
+    flat.push(node.question);
+    node.children.forEach(traverse);
+  };
+  nodes.forEach(traverse);
+  return flat;
+};
+
+const sortQuestionsHierarchically = (questions: FormQuestion[]): FormQuestion[] => {
+  const tree = buildQuestionTree(questions);
+  const flat = flattenQuestionTree(tree);
+  const numberMap = getQuestionNumberMap(flat);
+  return flat.map(q => ({
+    ...q,
+    displayNumber: numberMap.get(q.id)
+  }));
+};
+
+
 interface QuestionAlternativesEditorProps {
   question: FormQuestion;
   onUpdateOptions: (options: string[]) => void;
-  t: (key: string) => string;
+  t: (key: string, options?: any) => string;
+  formId: string;
+  forms: Form[];
+  onShowWarning: (title: string, message: string) => void;
 }
 
-const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAlternativesEditorProps) => {
+const QuestionAlternativesEditor = ({
+  question,
+  onUpdateOptions,
+  t,
+  formId,
+  forms,
+  onShowWarning
+}: QuestionAlternativesEditorProps) => {
   const currentOptions = question.options || [];
   const optionsJoined = currentOptions.join('\n');
   const [prevOptionsText, setPrevOptionsText] = useState(optionsJoined);
@@ -85,6 +168,33 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
 
   const duplicateCount = duplicates.size;
 
+  const getLinkedOptionsForQuestion = (qId: string, fId: string) => {
+    const linked: string[] = [];
+    forms.forEach(form => {
+      form.questions.forEach(q => {
+        if (q.condition && q.condition.questionId === qId && (q.condition.formId || form.id) === fId) {
+          if (!linked.includes(q.condition.value)) {
+            linked.push(q.condition.value);
+          }
+        }
+      });
+    });
+    return linked;
+  };
+
+  const validateNewOptions = (newOpts: string[]) => {
+    const linkedOpts = getLinkedOptionsForQuestion(question.id, formId);
+    const missing = linkedOpts.filter(opt => !newOpts.includes(opt));
+    if (missing.length > 0) {
+      onShowWarning(
+        t('forms.cannot_modify_linked_options_title'),
+        t('forms.cannot_modify_linked_options_desc', { name: missing.join(', ') })
+      );
+      return false;
+    }
+    return true;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setLocalText(val);
@@ -99,13 +209,21 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
       newOpts.some((opt, idx) => opt !== currentOptions[idx]);
 
     if (optionsChanged) {
-      onUpdateOptions(newOpts);
+      const linkedOpts = getLinkedOptionsForQuestion(question.id, formId);
+      const missing = linkedOpts.filter(opt => !newOpts.includes(opt));
+      if (missing.length === 0) {
+        onUpdateOptions(newOpts);
+      }
     }
   };
 
   const handleBlur = () => {
     setIsFocused(false);
     const cleanedText = nonBlankLines.join('\n');
+    if (!validateNewOptions(nonBlankLines)) {
+      setLocalText(currentOptions.join('\n'));
+      return;
+    }
     setLocalText(cleanedText);
     onUpdateOptions(nonBlankLines);
   };
@@ -115,22 +233,35 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
       a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
     );
     const uniqueSorted = Array.from(new Set(sorted));
+    if (!validateNewOptions(uniqueSorted)) {
+      return;
+    }
     setLocalText(uniqueSorted.join('\n'));
     onUpdateOptions(uniqueSorted);
   };
 
   const handleClear = () => {
+    if (!validateNewOptions([])) {
+      return;
+    }
     setLocalText('');
     onUpdateOptions([]);
   };
 
   const handleFixDuplicates = () => {
     const uniqueOpts = Array.from(new Set(nonBlankLines));
+    if (!validateNewOptions(uniqueOpts)) {
+      return;
+    }
     setLocalText(uniqueOpts.join('\n'));
     onUpdateOptions(uniqueOpts);
   };
 
   const handleApplyAndClose = () => {
+    if (!validateNewOptions(nonBlankLines)) {
+      setLocalText(currentOptions.join('\n'));
+      return;
+    }
     setIsEditing(false);
     const cleanedText = nonBlankLines.join('\n');
     setLocalText(cleanedText);
@@ -140,7 +271,7 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
   if (!isEditing) {
     return (
       <div className="options-editor" style={{ animation: 'fadeIn 0.25s ease' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-sm)' }}>
           <label style={{ margin: 0, fontWeight: 'bold' }}>{t('forms.field_options')}</label>
           <span className={`alt-editor-badge ${currentOptions.length > 0 ? 'success' : ''}`}>
             {currentOptions.length} {t('forms.alternatives_count')}
@@ -153,12 +284,12 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
           style={{ 
             display: 'flex', 
             flexWrap: 'wrap', 
-            gap: '6px', 
-            marginBottom: '12px',
+            gap: 'var(--spacing-xs)', 
+            marginBottom: 'var(--spacing-md)',
             background: 'var(--bg-dark)',
             border: '1px solid var(--panel-border)',
             borderRadius: '8px',
-            padding: '10px 12px',
+            padding: 'var(--spacing-sm) var(--spacing-md)',
             minHeight: '48px',
             alignItems: 'center'
           }}
@@ -170,13 +301,13 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: 'var(--spacing-xs)',
                 backgroundColor: 'var(--panel-border)',
                 border: '1px solid rgba(59, 130, 246, 0.2)',
                 color: 'var(--text-main)',
-                padding: '4px 10px',
+                padding: 'var(--spacing-xs) var(--spacing-sm)',
                 borderRadius: '16px',
-                fontSize: '0.85rem',
+                fontSize: 'var(--text-sm)',
                 animation: 'fadeIn 0.2s ease'
               }}
             >
@@ -185,6 +316,21 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
                 className="pill-remove"
                 onClick={(e) => {
                   e.stopPropagation();
+                  const isLinked = forms.some(form => 
+                    form.questions.some(q => 
+                      q.condition && 
+                      q.condition.questionId === question.id && 
+                      q.condition.value === opt &&
+                      (q.condition.formId || form.id) === formId
+                    )
+                  );
+                  if (isLinked) {
+                    onShowWarning(
+                      t('forms.cannot_delete_linked_option_title'),
+                      t('forms.cannot_delete_linked_option_desc', { name: opt })
+                    );
+                    return;
+                  }
                   const newOpts = currentOptions.filter((_, i) => i !== optIndex);
                   onUpdateOptions(newOpts);
                 }}
@@ -196,13 +342,13 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
             </div>
           ))}
           {currentOptions.length === 0 && (
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
               {t('forms.no_options')}
             </span>
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
           <button
             type="button"
             className="btn-primary"
@@ -210,9 +356,9 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
             style={{ 
               display: 'inline-flex', 
               alignItems: 'center', 
-              gap: '6px', 
-              padding: '6px 14px', 
-              fontSize: '0.85rem',
+              gap: 'var(--spacing-xs)', 
+              padding: 'var(--spacing-xs) var(--spacing-md)', 
+              fontSize: 'var(--text-sm)',
               fontWeight: '600'
             }}
           >
@@ -227,9 +373,9 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
             style={{ 
               display: 'inline-flex', 
               alignItems: 'center', 
-              gap: '4px', 
-              padding: '6px 12px', 
-              fontSize: '0.85rem'
+              gap: 'var(--spacing-xs)', 
+              padding: 'var(--spacing-xs) var(--spacing-md)', 
+              fontSize: 'var(--text-sm)'
             }}
           >
             🔤 {t('forms.sort_alphabetically')}
@@ -241,7 +387,7 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
 
   return (
     <div className="options-editor" style={{ animation: 'fadeIn 0.25s ease' }}>
-      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>
+      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: 'var(--spacing-xs)' }}>
         {t('forms.field_options')}
       </label>
 
@@ -294,7 +440,7 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
           autoFocus
         />
         
-        <div className="alt-editor-footer" style={{ borderBottom: '1px dashed var(--panel-border)', borderTop: 'none', paddingBottom: '8px' }}>
+        <div className="alt-editor-footer" style={{ borderBottom: '1px dashed var(--panel-border)', borderTop: 'none', paddingBottom: 'var(--spacing-sm)' }}>
           <span>💡 {t('forms.bulk_add_help')}</span>
           {isFocused && (
             <span style={{ color: 'var(--success)', animation: 'fadeIn 0.2s', display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -303,18 +449,18 @@ const QuestionAlternativesEditor = ({ question, onUpdateOptions, t }: QuestionAl
           )}
         </div>
 
-        <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.01)', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ padding: 'var(--spacing-sm) var(--spacing-md)', background: 'rgba(255,255,255,0.01)', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"
             className="btn-primary"
             onClick={handleApplyAndClose}
             style={{ 
-              padding: '6px 16px', 
-              fontSize: '0.85rem', 
+              padding: 'var(--spacing-xs) var(--spacing-lg)', 
+              fontSize: 'var(--text-sm)', 
               fontWeight: '700',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: 'var(--spacing-xs)',
               backgroundColor: 'var(--success)',
               borderColor: 'var(--success)'
             }}
@@ -335,6 +481,17 @@ export const FormLibraryView = () => {
   const ownerTask = selectedForm
     ? workflow.tasks.find(task => task.formIds?.includes(selectedForm.id))
     : undefined;
+
+  const getFormRank = React.useCallback((formId: string) => {
+    for (let i = 0; i < workflow.tasks.length; i++) {
+      const task = workflow.tasks[i];
+      const fIndex = (task.formIds || []).indexOf(formId);
+      if (fIndex !== -1) {
+        return i * 1000 + fIndex;
+      }
+    }
+    return Infinity;
+  }, [workflow.tasks]);
   const [editingTitle, setEditingTitle] = useState<Record<string, string>>({});
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
   const [showPreview, setShowPreview] = useState(true);
@@ -343,16 +500,133 @@ export const FormLibraryView = () => {
   const [questionToDelete, setQuestionToDelete] = useState<FormQuestion | null>(null);
   const [formToDelete, setFormToDelete] = useState<Form | null>(null);
   const [prevFormId, setPrevFormId] = useState<string | null>(null);
+  const [questionToDeleteDeps, setQuestionToDeleteDeps] = useState<{ formTitle: string; questionLabel: string; formId: string; questionId: string }[]>([]);
+  const [alternativeWarning, setAlternativeWarning] = useState<{ title: string; message: string } | null>(null);
+  const [showOtherFormsForQuestions, setShowOtherFormsForQuestions] = useState<Set<string>>(new Set());
+  const prevRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  const prevIdsRef = useRef<string[]>([]);
+  const questionsListRef = useRef<HTMLDivElement>(null);
+  const lastFormIdRef = useRef<string | null>(null);
+
+  useLayoutEffect(() => {
+    if (!questionsListRef.current || !selectedForm) return;
+
+    if (lastFormIdRef.current !== selectedForm.id) {
+      prevRectsRef.current.clear();
+      prevIdsRef.current = [];
+      lastFormIdRef.current = selectedForm.id;
+    }
+
+    const children = Array.from(questionsListRef.current.children) as HTMLElement[];
+    const prevRects = prevRectsRef.current;
+
+    // Get current IDs
+    const currentIds = children
+      .map((child) => child.getAttribute('data-q-id'))
+      .filter(Boolean) as string[];
+
+    const prevIds = prevIdsRef.current;
+
+    // Check if the order changed (same elements, different order)
+    const setPrev = new Set(prevIds);
+    const hasSameElements = currentIds.length === prevIds.length && currentIds.every((id) => setPrev.has(id));
+    const isReordered = hasSameElements && currentIds.some((id, idx) => id !== prevIds[idx]);
+
+    const currentRects = new Map<string, DOMRect>();
+
+    // 1. Measure new positions ("Last")
+    children.forEach((child) => {
+      const qId = child.getAttribute('data-q-id');
+      if (qId) {
+        currentRects.set(qId, child.getBoundingClientRect());
+      }
+    });
+
+    // 2. Apply FLIP only if there was an actual reordering of the same elements
+    if (isReordered) {
+      children.forEach((child) => {
+        const qId = child.getAttribute('data-q-id');
+        if (!qId) return;
+
+        const firstRect = prevRects.get(qId);
+        const lastRect = currentRects.get(qId);
+
+        if (firstRect && lastRect) {
+          const deltaY = firstRect.top - lastRect.top;
+          if (deltaY !== 0) {
+            // Snap back synchronously
+            child.style.transform = `translateY(${deltaY}px)`;
+            child.style.transition = 'none';
+
+            // Force reflow
+            child.offsetHeight;
+
+            // Animate smoothly
+            child.style.transition = 'transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            child.style.transform = '';
+
+            // Cleanup transition after animation completes
+            setTimeout(() => {
+              if (child) child.style.transition = '';
+            }, 400);
+          }
+        }
+      });
+    }
+
+    // 3. Save new positions for the next change
+    prevRectsRef.current = currentRects;
+    prevIdsRef.current = currentIds;
+  });
+
+  const getDependentQuestions = (targetQuestionId: string, formId: string) => {
+    const list: { formTitle: string; questionLabel: string; formId: string; questionId: string }[] = [];
+    forms.forEach(form => {
+      form.questions.forEach(q => {
+        if (q.condition && q.condition.questionId === targetQuestionId) {
+          const condFormId = q.condition.formId || form.id;
+          if (condFormId === formId) {
+            list.push({
+              formTitle: form.title,
+              questionLabel: q.label,
+              formId: form.id,
+              questionId: q.id
+            });
+          }
+        }
+      });
+    });
+    return list;
+  };
 
   // Colapsar preguntas por defecto durante el renderizado si hay más de una al cambiar de formulario o cargar la vista
   if (selectedFormId !== prevFormId) {
     setPrevFormId(selectedFormId);
+    setPreviewAnswers({});
     if (selectedForm && selectedForm.questions.length > 1) {
       setCollapsedQuestions(new Set(selectedForm.questions.map(q => q.id)));
     } else {
       setCollapsedQuestions(new Set());
     }
   }
+
+  const externalDependencies = React.useMemo(() => {
+    if (!selectedForm) return [];
+    const deps: { form: Form; question: FormQuestion }[] = [];
+    selectedForm.questions.forEach(q => {
+      const cond = q.condition;
+      if (cond && cond.formId && cond.formId !== selectedForm.id) {
+        const otherForm = forms.find(f => f.id === cond.formId);
+        const otherQuestion = otherForm?.questions.find(pq => pq.id === cond.questionId);
+        if (otherForm && otherQuestion) {
+          if (!deps.some(d => d.question.id === otherQuestion.id)) {
+            deps.push({ form: otherForm, question: otherQuestion });
+          }
+        }
+      }
+    });
+    return deps;
+  }, [selectedForm, forms]);
 
   const questionNumberMap = selectedForm ? getQuestionNumberMap(selectedForm.questions) : new Map<string, string>();
 
@@ -421,12 +695,63 @@ export const FormLibraryView = () => {
     if (selectedForm) updateForm(selectedForm.id, { description: e.target.value });
   };
 
+  const capturePositions = () => {
+    if (questionsListRef.current) {
+      const children = Array.from(questionsListRef.current.children) as HTMLElement[];
+      const rects = new Map<string, DOMRect>();
+      const ids: string[] = [];
+      children.forEach((child) => {
+        const qId = child.getAttribute('data-q-id');
+        if (qId) {
+          rects.set(qId, child.getBoundingClientRect());
+          ids.push(qId);
+        }
+      });
+      prevRectsRef.current = rects;
+      prevIdsRef.current = ids;
+    }
+  };
+
+  const assignDisplayNumbers = (questions: FormQuestion[]): FormQuestion[] => {
+    const numberMap = getQuestionNumberMap(questions);
+    return questions.map(q => ({ ...q, displayNumber: numberMap.get(q.id) }));
+  };
+
   const handleQuestionUpdate = (questionId: string, updates: Partial<FormQuestion>) => {
     if (!selectedForm) return;
-    const updatedQuestions = selectedForm.questions.map(q =>
+    let updatedQuestions = selectedForm.questions.map(q =>
       q.id === questionId ? { ...q, ...updates } : q
     );
+    if ('condition' in updates) {
+      capturePositions();
+      updatedQuestions = sortQuestionsHierarchically(updatedQuestions);
+    } else {
+      // Re-assign display numbers even if condition hasn't changed just in case
+      updatedQuestions = assignDisplayNumbers(updatedQuestions);
+    }
     updateForm(selectedForm.id, { questions: updatedQuestions });
+  };
+
+  const handleMoveQuestion = (questionId: string, direction: 'up' | 'down') => {
+    if (!selectedForm) return;
+    const tree = buildQuestionTree(selectedForm.questions);
+    const match = findNodeAndParentList(tree, questionId);
+    if (!match) return;
+
+    const { list, index } = match;
+    if (direction === 'up' && index > 0) {
+      const temp = list[index];
+      list[index] = list[index - 1];
+      list[index - 1] = temp;
+    } else if (direction === 'down' && index < list.length - 1) {
+      const temp = list[index];
+      list[index] = list[index + 1];
+      list[index + 1] = temp;
+    }
+
+    const flatQuestions = flattenQuestionTree(tree);
+    capturePositions();
+    updateForm(selectedForm.id, { questions: assignDisplayNumbers(flatQuestions) });
   };
 
   const handleAddQuestion = () => {
@@ -437,13 +762,54 @@ export const FormLibraryView = () => {
       label: t('forms.new_question'),
       required: false
     };
-    updateForm(selectedForm.id, { questions: [...selectedForm.questions, newQuestion] });
+    const newQuestions = [...selectedForm.questions, newQuestion];
+    updateForm(selectedForm.id, { questions: assignDisplayNumbers(newQuestions) });
   };
 
   const deleteQuestionById = (questionId: string) => {
     if (!selectedForm) return;
+
+    const deps = getDependentQuestions(questionId, selectedForm.id);
+
+    // Group dependencies by form ID to perform a single updateForm call per form
+    const formUpdates: Record<string, string[]> = {};
+    deps.forEach(dep => {
+      if (!formUpdates[dep.formId]) formUpdates[dep.formId] = [];
+      formUpdates[dep.formId].push(dep.questionId);
+    });
+
+    // Unlink conditions in other forms
+    Object.entries(formUpdates).forEach(([depFormId, depQuestionIds]) => {
+      const f = forms.find(form => form.id === depFormId);
+      if (f) {
+        let updatedQuestions = f.questions.map(q => {
+          if (depQuestionIds.includes(q.id)) {
+            const { condition, ...rest } = q;
+            return rest;
+          }
+          return q;
+        });
+        // We might want to assign display numbers here if this is the same logic
+        updatedQuestions = assignDisplayNumbers(updatedQuestions);
+        updateForm(depFormId, { questions: updatedQuestions });
+      }
+    });
+
+    // Remove from current form and unlink any internal dependencies in the same form
+    let updatedSelectedQuestions = selectedForm.questions
+      .filter(q => q.id !== questionId)
+      .map(q => {
+        if (q.condition && q.condition.questionId === questionId) {
+          const { condition, ...rest } = q;
+          return rest;
+        }
+        return q;
+      });
+
+    updatedSelectedQuestions = assignDisplayNumbers(updatedSelectedQuestions);
+
     updateForm(selectedForm.id, {
-      questions: selectedForm.questions.filter(q => q.id !== questionId)
+      questions: updatedSelectedQuestions
     });
   };
 
@@ -466,8 +832,11 @@ export const FormLibraryView = () => {
     const question = selectedForm.questions.find(q => q.id === questionId);
     if (!question) return;
 
-    if (questionHasInformation(question)) {
+    const deps = getDependentQuestions(questionId, selectedForm.id);
+
+    if (deps.length > 0 || questionHasInformation(question)) {
       setQuestionToDelete(question);
+      setQuestionToDeleteDeps(deps);
       return;
     }
 
@@ -478,6 +847,7 @@ export const FormLibraryView = () => {
     if (!questionToDelete) return;
     deleteQuestionById(questionToDelete.id);
     setQuestionToDelete(null);
+    setQuestionToDeleteDeps([]);
   };
 
   const handleToggleCollapse = (questionId: string) => {
@@ -527,23 +897,21 @@ export const FormLibraryView = () => {
           {!isCollapsed ? (
             <>
               <h3>{t('forms.title')} ({forms.length})</h3>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 'var(--spacing-xs)', alignItems: 'center' }}>
                 <button className="btn-premium-action" onClick={handleCreateForm} title={t('forms.new_form_title')}>
                   {t('forms.new_form')}
                 </button>
-                <button className="btn-icon" onClick={() => setIsCollapsed(true)} title={t('common.collapse')} style={{ color: 'var(--text-muted)' }}>
+                <button className="btn-icon" onClick={() => setIsCollapsed(true)} title={t('common.collapse')} style={{ color: '#c5c5c5',position:'relative', right: '0px', top: '-17px'}}>
                   ◀
                 </button>
               </div>
             </>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', alignItems: 'center' }}>
-              <button className="btn-icon" onClick={() => setIsCollapsed(false)} title={t('common.expand')} style={{ color: 'var(--text-muted)' }}>
+            <div>
+              <button className="btn-icon" onClick={() => setIsCollapsed(false)} title={t('common.expand')} style={{ color: '#c5c5c5',position:'relative', right: '-25px', top: '-7px'}}>
                 ▶
               </button>
-              <button className="btn-premium-action" onClick={handleCreateForm} title={t('forms.new_form_title')} style={{ width: '100%', height: '32px', padding: 0, fontSize: '0.75rem' }}>
-                {t('forms.new_form')}
-              </button>
+              <h3 style={{marginBottom:'var(--spacing-xs)'}}>{t('forms.title')}</h3>
             </div>
           )}
         </div>
@@ -567,7 +935,7 @@ export const FormLibraryView = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 'bold',
-                    fontSize: '0.65rem',
+                    fontSize: 'var(--text-xs)',
                     transition: 'all 0.2s',
                     textAlign: 'center',
                     whiteSpace: 'normal',
@@ -598,9 +966,9 @@ export const FormLibraryView = () => {
           ))}
           {forms.length === 0 && (
             isCollapsed ? (
-              <div style={{ textAlign: 'center', padding: '15px 0', color: 'var(--text-muted)', fontSize: '0.8rem' }} title={t('forms.empty_list')}>∅</div>
+              <div style={{ textAlign: 'center', padding: 'var(--spacing-md) 0', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }} title={t('forms.empty_list')}>∅</div>
             ) : (
-              <p className="form-desc" style={{ padding: '15px' }}>{t('forms.empty_list')}</p>
+              <p className="form-desc" style={{ padding: 'var(--spacing-md)' }}>{t('forms.empty_list')}</p>
             )
           )}
         </div>
@@ -623,7 +991,7 @@ export const FormLibraryView = () => {
                     backgroundColor: 'var(--panel-bg)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    gap: 'var(--spacing-xs)',
                   }}
                   onClick={() => setShowPreview(true)}
                   title={t('common.preview')}
@@ -640,8 +1008,8 @@ export const FormLibraryView = () => {
                 ) : (
                   <div className="editor-form">
                     <div className="editor-section config-card">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h4 style={{ margin: 0, fontSize: '1.2rem' }}>{t('forms.config')}</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-xl)' }}>
+                        <h4 style={{ margin: 0, fontSize: 'var(--text-lg)' }}>{t('forms.config')}</h4>
                         <button
                           className="btn-icon danger"
                           onClick={() => handleDeleteForm(selectedForm.id)}
@@ -661,7 +1029,7 @@ export const FormLibraryView = () => {
                           style={editingTitle[selectedForm.id] !== undefined && isDuplicateName(editingTitle[selectedForm.id], selectedForm.id) ? { borderColor: '#ef4444' } : {}}
                         />
                         {editingTitle[selectedForm.id] !== undefined && isDuplicateName(editingTitle[selectedForm.id], selectedForm.id) && (
-                          <span className="error-text" style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                          <span className="error-text" style={{ color: '#ef4444', fontSize: 'var(--text-xs)', marginTop: 'var(--spacing-xs)', display: 'block' }}>
                             {t('forms.duplicate_name_error')}
                           </span>
                         )}
@@ -671,21 +1039,21 @@ export const FormLibraryView = () => {
                         <textarea className="form-input textarea" value={selectedForm.description || ''} onChange={handleDescChange} />
                       </div>
                       {ownerTask && (
-                        <p className="form-desc" style={{ marginTop: '10px', fontWeight:"bold" }}>
+                        <p className="form-desc" style={{ marginTop: 'var(--spacing-sm)', fontWeight:"bold" }}>
                           {t('forms.occupied_by_task', { taskName: ownerTask.name })}
                         </p>
                       )}
                     </div>
 
                     <div className="editor-section">
-                      <div className="section-header-row" style={{ justifyContent: 'start', gap: '10px' }}>
+                      <div className="section-header-row" style={{ justifyContent: 'start', gap: 'var(--spacing-sm)' }}>
                         <h4>{t('forms.questions')}</h4>
                         {selectedForm.questions.length > 0 && (
-                          <div style={{ display: 'flex', gap: '10px' }}>
-                            <button className="btn-discreet" onClick={handleExpandAll} title={t('common.expand_all')}>
+                          <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                            <button className="btn-discreet" onClick={handleExpandAll} title={t('common.expand_all')} style={{backgroundColor:'white'}}>
                               ⏷ {t('common.expand_all')}
                             </button>
-                            <button className="btn-discreet" onClick={handleCollapseAll} title={t('common.collapse_all')}>
+                            <button className="btn-discreet" onClick={handleCollapseAll} title={t('common.collapse_all')} style={{backgroundColor:'white'}}>
                               ⏶ {t('common.collapse_all')}
                             </button>
                           </div>
@@ -693,8 +1061,8 @@ export const FormLibraryView = () => {
                       </div>
 
                       {selectedForm.questions.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '20px' }}>
-                          <p className="form-desc" style={{ marginBottom: '15px' }}>{t('forms.no_questions')}</p>
+                        <div style={{ textAlign: 'center', padding: 'var(--spacing-xl)' }}>
+                          <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>{t('forms.no_questions')}</p>
                           <button
                             className="btn-add-question"
                             onClick={handleAddQuestion}
@@ -704,9 +1072,14 @@ export const FormLibraryView = () => {
                           </button>
                         </div>
                       ) : (
-                        <div className="questions-editor-list">
+                        <div ref={questionsListRef} className="questions-editor-list">
                           {selectedForm.questions.map((q, index) => {
                             const isQuestionCollapsed = collapsedQuestions.has(q.id);
+
+                            const qTree = buildQuestionTree(selectedForm.questions);
+                            const qMatch = findNodeAndParentList(qTree, q.id);
+                            const isUpDisabled = qMatch ? qMatch.index === 0 : true;
+                            const isDownDisabled = qMatch ? qMatch.index === qMatch.list.length - 1 : true;
 
                             if (isQuestionCollapsed) {
                               return (
@@ -719,44 +1092,111 @@ export const FormLibraryView = () => {
                                   sensitiveLabel={t('common.sensitive_info')}
                                   onExpand={() => handleToggleCollapse(q.id)}
                                   onDelete={() => handleDeleteQuestion(q.id)}
+                                  onMoveUp={() => handleMoveQuestion(q.id, 'up')}
+                                  onMoveDown={() => handleMoveQuestion(q.id, 'down')}
+                                  isUpDisabled={isUpDisabled}
+                                  isDownDisabled={isDownDisabled}
+                                  moveUpLabel={t('common.move_up') || 'Mover arriba'}
+                                  moveDownLabel={t('common.move_down') || 'Mover abajo'}
                                 />
                               );
                             }
 
                             return (
-                            <div key={q.id} className="question-editor-card">
+                            <div key={q.id} className="question-editor-card" data-q-id={q.id}>
                               <div className="card-header" style={{ alignItems: 'center' }}>
                                 <div className="question-number-chip">{questionNumberMap.get(q.id) || `${index + 1}`}</div>
                                 <button
                                   className="btn-icon btn-collapse"
                                   onClick={() => handleToggleCollapse(q.id)}
-                                  style={{ marginTop: '6px', alignSelf: 'start' }}
+                                  style={{ marginTop: 'var(--spacing-xs)', alignSelf: 'start' }}
                                 >
                                   ▼
                                 </button>
-                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                                    <input
-                                      type="text" 
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', width: '100%' }}>
+                                    <textarea
                                       className="form-input label-input"
                                       value={q.label}
                                       onChange={(e) => handleQuestionUpdate(q.id, { label: e.target.value })}
-                                      style={{ flex: 1 }}
+                                      style={{ flex: 1, minHeight: '60px', resize: 'vertical' }}
+                                      rows={2}
                                     />
                                   </div>
-                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', gap: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
                                     {q.required && <span className="node-badge badge-required">{t('common.required')}</span>}
-                                    {q.condition && (
-                                      <span className="node-badge badge-conditional-q" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                        {t('common.conditional')}
-                                        <span style={{ fontWeight: 'bold', opacity: 0.8, fontSize: '0.63rem' }}>
-                                          ({t('tasks.depends_on')} {selectedForm.questions.find(pq => pq.id === q.condition!.questionId)?.label || 'Desconocida'})
+                                    {q.condition && (() => {
+                                      const cond = q.condition!;
+                                      const condForm = cond.formId ? forms.find(f => f.id === cond.formId) : selectedForm;
+                                      const condQuestion = condForm?.questions.find(pq => pq.id === cond.questionId);
+                                      const locationText = cond.formId && condForm ? `[${condForm.title}] ` : '';
+                                      return (
+                                        <span className="node-badge badge-conditional-q" style={{ display: 'flex', gap: 'var(--spacing-xs)', alignItems: 'center' }}>
+                                          {t('common.conditional')}
+                                          <span style={{ fontWeight: 'bold', opacity: 0.8, fontSize: 'var(--text-xs)' }}>
+                                            ({t('tasks.depends_on')} {locationText}{condQuestion?.label || 'Desconocida'})
+                                          </span>
                                         </span>
-                                      </span>
-                                    )}
+                                      );
+                                    })()}
                                     {q.isSensitive && <span className="node-badge badge-sensitive">{t('common.sensitive_info')}</span>}
                                   </div>
                                 </div>
+                                {/* Up / Down Reorder Buttons */}
+                                <button
+                                  type="button"
+                                  className="btn-icon"
+                                  disabled={isUpDisabled}
+                                  onClick={(e) => { e.stopPropagation(); handleMoveQuestion(q.id, 'up'); }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '34px',
+                                    height: '34px',
+                                    minWidth: '34px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--panel-border)',
+                                    background: 'transparent',
+                                    color: isUpDisabled ? 'var(--text-muted)' : 'var(--primary)',
+                                    opacity: isUpDisabled ? 0.25 : 1,
+                                    cursor: isUpDisabled ? 'not-allowed' : 'pointer',
+                                    padding: 0,
+                                    fontSize: 'var(--text-sm)',
+                                    alignSelf: 'start',
+                                    marginRight: 'var(--spacing-xs)'
+                                  }}
+                                  title={t('common.move_up') || 'Mover arriba'}
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-icon"
+                                  disabled={isDownDisabled}
+                                  onClick={(e) => { e.stopPropagation(); handleMoveQuestion(q.id, 'down'); }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '34px',
+                                    height: '34px',
+                                    minWidth: '34px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--panel-border)',
+                                    background: 'transparent',
+                                    color: isDownDisabled ? 'var(--text-muted)' : 'var(--primary)',
+                                    opacity: isDownDisabled ? 0.25 : 1,
+                                    cursor: isDownDisabled ? 'not-allowed' : 'pointer',
+                                    padding: 0,
+                                    fontSize: 'var(--text-sm)',
+                                    alignSelf: 'start',
+                                    marginRight: 'var(--spacing-xs)'
+                                  }}
+                                  title={t('common.move_down') || 'Mover abajo'}
+                                >
+                                  ▼
+                                </button>
                                 <button
                                   className="btn-icon danger question-delete-btn"
                                   onClick={() => handleDeleteQuestion(q.id)}
@@ -771,7 +1211,7 @@ export const FormLibraryView = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     borderRadius: '8px',
-                                    fontSize: '1rem',
+                                    fontSize: 'var(--text-md)',
                                     lineHeight: 1,
                                     cursor: 'pointer'
                                   }}
@@ -786,7 +1226,7 @@ export const FormLibraryView = () => {
                               <div className="card-body">
                                 <div className="field-group">
                                   <label style={{ fontWeight: 'bold', color: 'black', marginBottom: '2px' }}>{t('forms.type')}</label>
-                                  <select style={{ marginRight: '25px', paddingRight: '10px' }}
+                                  <select style={{ marginRight: '25px', paddingRight: 'var(--spacing-sm)' }}
                                     className="form-input" value={q.type}
                                     onChange={(e) => handleQuestionUpdate(q.id, { type: e.target.value as QuestionType })}
                                   >
@@ -799,34 +1239,91 @@ export const FormLibraryView = () => {
                                   </select>
                                 </div>
 
-
-
-                                {index > 0 && (
+                                {(index > 0 || forms.length > 1) && (
                                   <div className="field-group" style={{ display: 'block', width: '100%' }}>
-                                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '8px', display: 'block' }}>{t('forms.visibility')}</label>
+                                    <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: 'var(--spacing-sm)', display: 'block' }}>{t('forms.visibility')}</label>
                                     <select
                                       className="form-input"
-                                      style={{ marginBottom: '8px' }}
-                                      value={q.condition ? q.condition.questionId : ''}
+                                      style={{ marginBottom: 'var(--spacing-sm)' }}
+                                      value={q.condition ? `${q.condition.formId || selectedForm.id}|${q.condition.questionId}` : ''}
                                       onChange={(e) => {
                                         const val = e.target.value;
+                                        if (val === 'SHOW_OTHER_FORMS') {
+                                          setShowOtherFormsForQuestions(prev => {
+                                            const next = new Set(prev);
+                                            next.add(q.id);
+                                            return next;
+                                          });
+                                          return;
+                                        }
+                                        if (val === 'HIDE_OTHER_FORMS') {
+                                          setShowOtherFormsForQuestions(prev => {
+                                            const next = new Set(prev);
+                                            next.delete(q.id);
+                                            return next;
+                                          });
+                                          if (q.condition && q.condition.formId) {
+                                            handleQuestionUpdate(q.id, { condition: undefined });
+                                          }
+                                          return;
+                                        }
                                         if (!val) {
                                           handleQuestionUpdate(q.id, { condition: undefined });
                                         } else {
+                                          const [formId, questionId] = val.split('|');
                                           handleQuestionUpdate(q.id, {
-                                            condition: { questionId: val, operator: 'equals', value: '' }
+                                            condition: {
+                                              formId: formId === selectedForm.id ? undefined : formId,
+                                              questionId,
+                                              operator: 'equals',
+                                              value: ''
+                                            }
                                           });
                                         }
                                       }}
                                     >
                                       <option value="">{t('forms.always_visible')}</option>
-                                      {selectedForm.questions.slice(0, index).map(prevQ => (
-                                        <option key={prevQ.id} value={prevQ.id}>{t('forms.show_if')}{prevQ.label}</option>
-                                      ))}
+                                      {index > 0 && (
+                                        <optgroup label={selectedForm.title}>
+                                          {selectedForm.questions.slice(0, index).map(prevQ => (
+                                            <option key={prevQ.id} value={`${selectedForm.id}|${prevQ.id}`}>{t('forms.show_if')}{prevQ.label}</option>
+                                          ))}
+                                        </optgroup>
+                                      )}
+                                      
+                                      {(() => {
+                                        const isOtherFormsVisible = showOtherFormsForQuestions.has(q.id) || (q.condition && q.condition.formId !== undefined);
+                                        const otherAvailableForms = forms.filter(f => f.id !== selectedForm.id && getFormRank(f.id) < getFormRank(selectedForm.id));
+                                        const hasOtherFormsWithQuestions = otherAvailableForms.some(f => f.questions.length > 0);
+
+                                        if (!hasOtherFormsWithQuestions) return null;
+
+                                        if (isOtherFormsVisible) {
+                                          return (
+                                            <>
+                                              <option value="HIDE_OTHER_FORMS">◀ {t('forms.hide_other_forms_options')}</option>
+                                              {otherAvailableForms.map(otherForm => {
+                                                if (otherForm.questions.length === 0) return null;
+                                                return (
+                                                  <optgroup key={otherForm.id} label={otherForm.title}>
+                                                    {otherForm.questions.map(otherQ => (
+                                                      <option key={otherQ.id} value={`${otherForm.id}|${otherQ.id}`}>{t('forms.show_if')}{otherQ.label}</option>
+                                                    ))}
+                                                  </optgroup>
+                                                );
+                                              })}
+                                            </>
+                                          );
+                                        } else {
+                                          return (
+                                            <option value="SHOW_OTHER_FORMS">🌐 {t('forms.show_other_forms_options')}</option>
+                                          );
+                                        }
+                                      })()}
                                     </select>
 
                                     {q.condition && (
-                                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                      <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
                                         <select
                                           className="form-input"
                                           style={{ flex: 1 }}
@@ -837,7 +1334,9 @@ export const FormLibraryView = () => {
                                           <option value="not_equals">{t('forms.operators.not_equals')}</option>
                                           <option value="contains">{t('forms.operators.contains')}</option>
                                           {(() => {
-                                            const targetQ = selectedForm.questions.find(pq => pq.id === q.condition?.questionId);
+                                            const cond = q.condition!;
+                                            const condForm = cond.formId ? forms.find(f => f.id === cond.formId) : selectedForm;
+                                            const targetQ = condForm?.questions.find(pq => pq.id === cond.questionId);
                                             if (targetQ && targetQ.type === 'number') {
                                               return (
                                                 <>
@@ -851,14 +1350,16 @@ export const FormLibraryView = () => {
                                         </select>
 
                                         {(() => {
-                                          const targetQ = selectedForm.questions.find(pq => pq.id === q.condition?.questionId);
+                                          const cond = q.condition!;
+                                          const condForm = cond.formId ? forms.find(f => f.id === cond.formId) : selectedForm;
+                                          const targetQ = condForm?.questions.find(pq => pq.id === cond.questionId);
                                           if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
                                             return (
                                               <select
                                                 className="form-input"
                                                 style={{ flex: 1 }}
-                                                value={q.condition.value}
-                                                onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, value: e.target.value } })}
+                                                value={cond.value}
+                                                onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...cond, value: e.target.value } })}
                                               >
                                                 <option value="">{t('common.select_option')}</option>
                                                 {targetQ.options.map(opt => (
@@ -873,8 +1374,8 @@ export const FormLibraryView = () => {
                                               className="form-input"
                                               style={{ flex: 1 }}
                                               placeholder={t('forms.expected_value')}
-                                              value={q.condition.value}
-                                              onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, value: e.target.value } })}
+                                              value={cond.value}
+                                              onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...cond, value: e.target.value } })}
                                             />
                                           );
                                         })()}
@@ -883,15 +1384,15 @@ export const FormLibraryView = () => {
                                   </div>
                                 )}
                               </div>
-                              <div className="field-group row-align" style={{ gap: '20px', alignItems: 'center', display: 'flex' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div className="field-group row-align" style={{ gap: 'var(--spacing-xl)', alignItems: 'center', display: 'flex' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                                   <input
                                     type="checkbox" id={`req-${q.id}`} checked={!!q.required}
                                     onChange={(e) => handleQuestionUpdate(q.id, { required: e.target.checked })}
                                   />
                                   <label htmlFor={`req-${q.id}`} style={{ marginBottom: 0 }}>{t('common.required')}</label>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                                   <input
                                     type="checkbox" id={`sens-${q.id}`} checked={!!q.isSensitive}
                                     onChange={(e) => handleQuestionUpdate(q.id, { isSensitive: e.target.checked })}
@@ -904,6 +1405,9 @@ export const FormLibraryView = () => {
                                   question={q}
                                   onUpdateOptions={(opts) => handleQuestionUpdate(q.id, { options: opts })}
                                   t={t}
+                                  formId={selectedForm.id}
+                                  forms={forms}
+                                  onShowWarning={(title, message) => setAlternativeWarning({ title, message })}
                                 />
                               )}
                             </div>
@@ -913,7 +1417,7 @@ export const FormLibraryView = () => {
                       )}
 
                       {selectedForm.questions.length > 0 && (
-                        <div style={{ marginTop: '20px' }}>
+                        <div style={{ marginTop: 'var(--spacing-xl)' }}>
                           <button
                             className="btn-add-question"
                             onClick={handleAddQuestion}
@@ -939,7 +1443,7 @@ export const FormLibraryView = () => {
               <Panel defaultSize={40} minSize={20}>
                 <div className="library-preview panel-content padded-content" style={{ height: '100%', overflowY: 'auto' }}>
                   <div className="preview-container">
-                    <div className="preview-header" style={{ position: 'relative', marginBottom: '20px' }}>
+                    <div className="preview-header" style={{ position: 'relative', marginBottom: 'var(--spacing-xl)' }}>
                       <h4 style={{ margin: 0, textAlign: 'center' }}>{t('common.preview')}</h4>
                       <button
                         className="btn-icon"
@@ -950,13 +1454,56 @@ export const FormLibraryView = () => {
                         ✕
                       </button>
                     </div>
+
+                    {externalDependencies.length > 0 && (
+                      <div className="preview-card" style={{ marginBottom: 'var(--spacing-lg)', border: '1px dashed var(--primary)', background: 'rgba(59, 130, 246, 0.03)', padding: 'var(--spacing-md)' }}>
+                        <h5 style={{ margin: '0 0 var(--spacing-sm) 0', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>
+                          {t('forms.simulation.title')}
+                        </h5>
+                        <p style={{ margin: '0 0 var(--spacing-md) 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                          {t('forms.simulation.description')}
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                          {externalDependencies.map(({ form, question }) => (
+                            <div key={question.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                              <label style={{ fontSize: 'var(--text-xs)', fontWeight: '600', color: 'var(--text-main)' }}>
+                                [{form.title}] {question.label}
+                              </label>
+                              {question.type === 'dropdown' || question.type === 'radio' ? (
+                                <select
+                                  className="form-input"
+                                  style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)' }}
+                                  value={previewAnswers[question.id] || ''}
+                                  onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [question.id]: e.target.value }))}
+                                >
+                                  <option value="">{t('forms.simulation.select_option')}</option>
+                                  {(question.options || []).map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type={question.type === 'number' ? 'number' : 'text'}
+                                  className="form-input"
+                                  style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)' }}
+                                  placeholder={t('forms.simulation.test_value_placeholder')}
+                                  value={previewAnswers[question.id] || ''}
+                                  onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [question.id]: e.target.value }))}
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="preview-card">
                       <h2>{selectedForm.title}</h2>
                       {selectedForm.description && <p className="preview-desc">{selectedForm.description}</p>}
 
                       <div className="preview-form">
                         {selectedForm.questions.length === 0 ? (
-                          <p className="form-desc" style={{ textAlign: 'center', padding: '20px' }}>{t('forms.no_questions')}</p>
+                          <p className="form-desc" style={{ textAlign: 'center', padding: 'var(--spacing-xl)' }}>{t('forms.no_questions')}</p>
                         ) : (
                           selectedForm.questions.filter(q => evaluateCondition(q.condition)).map(q => (
                             <div key={q.id} className="preview-question">
@@ -1019,24 +1566,38 @@ export const FormLibraryView = () => {
       </div>
 
       {questionToDelete && (
-        <div className="modal-overlay" onClick={() => setQuestionToDelete(null)}>
+        <div className="modal-overlay" onClick={() => { setQuestionToDelete(null); setQuestionToDeleteDeps([]); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-card-header">
               <h2>{t('forms.delete_question_title')}</h2>
-              <button className="btn-close-modal" onClick={() => setQuestionToDelete(null)}>
+              <button className="btn-close-modal" onClick={() => { setQuestionToDelete(null); setQuestionToDeleteDeps([]); }}>
                 ×
               </button>
             </div>
 
             <div className="modal-card-body">
               <p>{t('forms.delete_question_confirm', { name: questionToDelete.label || t('forms.new_question') })}</p>
+              {questionToDeleteDeps.length > 0 && (
+                <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-md)', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                  <p style={{ color: 'var(--danger)', fontWeight: '600', marginBottom: 'var(--spacing-sm)', fontSize: 'var(--text-sm)' }}>
+                    ⚠️ {t('forms.delete_question_warning_dependencies')}
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: 'var(--spacing-xl)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                    {questionToDeleteDeps.map((dep, idx) => (
+                      <li key={idx} style={{ marginBottom: 'var(--spacing-xs)' }}>
+                        <strong>{dep.questionLabel || t('forms.new_question')}</strong> (en <em>{dep.formTitle}</em>)
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="modal-card-footer">
               <button
                 type="button"
                 className="btn-modal-secondary"
-                onClick={() => setQuestionToDelete(null)}
+                onClick={() => { setQuestionToDelete(null); setQuestionToDeleteDeps([]); }}
               >
                 {t('common.cancel')}
               </button>
@@ -1047,6 +1608,33 @@ export const FormLibraryView = () => {
                 style={{ backgroundColor: 'var(--danger)' }}
               >
                 {t('common.delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {alternativeWarning && (
+        <div className="modal-overlay" onClick={() => setAlternativeWarning(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-card-header">
+              <h2>{alternativeWarning.title}</h2>
+              <button className="btn-close-modal" onClick={() => setAlternativeWarning(null)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-card-body">
+              <p>{alternativeWarning.message}</p>
+            </div>
+
+            <div className="modal-card-footer">
+              <button
+                type="button"
+                className="btn-modal-primary"
+                onClick={() => setAlternativeWarning(null)}
+              >
+                {t('common.confirm') || 'OK'}
               </button>
             </div>
           </div>

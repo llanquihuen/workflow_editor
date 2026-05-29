@@ -8,6 +8,12 @@ interface CollapsedQuestionItemProps {
   sensitiveLabel: string;
   onExpand: () => void;
   onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isUpDisabled: boolean;
+  isDownDisabled: boolean;
+  moveUpLabel: string;
+  moveDownLabel: string;
 }
 
 export const CollapsedQuestionItem = ({
@@ -17,22 +23,28 @@ export const CollapsedQuestionItem = ({
   conditionalLabel,
   sensitiveLabel,
   onExpand,
-  onDelete
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  isUpDisabled,
+  isDownDisabled,
+  moveUpLabel,
+  moveDownLabel
 }: CollapsedQuestionItemProps) => {
   return (
-    <div className="question-editor-card collapsed">
+    <div className="question-editor-card collapsed" data-q-id={question.id}>
       <div className="card-header">
         <div className="question-number-chip">{questionNumber}</div>
         <button className="btn-icon btn-collapse collapsed" onClick={onExpand}>
           ▼
         </button>
 
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-          <span className="label-input collapsed-label" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={question.label}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', minWidth: 0, overflow: 'hidden' }}>
+          <span className="label-input collapsed-label" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', minWidth: 0, width: 0 }} title={question.label}>
             {question.label}
           </span>
 
-          {question.required && <span title={requiredLabel} style={{ fontSize: '1rem', color: '#ef4444', fontWeight: 700 }}>*</span>}
+          {question.required && <span title={requiredLabel} style={{ fontSize: 'var(--text-md)', color: '#ef4444', fontWeight: 700 }}>*</span>}
           {question.condition && (
             <span title={conditionalLabel} style={{ display: 'inline-flex', alignItems: 'center', color: '#fbbf24' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -50,6 +62,59 @@ export const CollapsedQuestionItem = ({
             </span>
           )}
         </div>
+
+        {/* Up / Down Reorder Buttons */}
+        <button
+          type="button"
+          className="btn-icon"
+          disabled={isUpDisabled}
+          onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '26px',
+            height: '26px',
+            minWidth: '26px',
+            borderRadius: '6px',
+            border: '1px solid var(--panel-border)',
+            background: 'transparent',
+            color: isUpDisabled ? 'var(--text-muted)' : 'var(--primary)',
+            opacity: isUpDisabled ? 0.25 : 1,
+            cursor: isUpDisabled ? 'not-allowed' : 'pointer',
+            padding: 0,
+            fontSize: 'var(--text-xs)'
+          }}
+          title={moveUpLabel}
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          className="btn-icon"
+          disabled={isDownDisabled}
+          onClick={(e) => { e.stopPropagation(); onMoveDown(); }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '26px',
+            height: '26px',
+            minWidth: '26px',
+            borderRadius: '6px',
+            border: '1px solid var(--panel-border)',
+            background: 'transparent',
+            color: isDownDisabled ? 'var(--text-muted)' : 'var(--primary)',
+            opacity: isDownDisabled ? 0.25 : 1,
+            cursor: isDownDisabled ? 'not-allowed' : 'pointer',
+            padding: 0,
+            fontSize: 'var(--text-xs)',
+            marginRight: 'var(--spacing-xs)'
+          }}
+          title={moveDownLabel}
+        >
+          ▼
+        </button>
 
         <button 
           className="btn-icon form-delete-btn" 

@@ -124,13 +124,15 @@
           "id": "q-nombre",
           "type": "text",
           "label": "Nombre completo del alumno",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-edad",
           "type": "number",
           "label": "Edad",
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-origen",
@@ -140,7 +142,8 @@
             "No, residente nacional",
             "Sí, viaje internacional"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         },
         {
           "id": "q-pais-origen",
@@ -151,7 +154,8 @@
             "questionId": "q-origen",
             "operator": "equals",
             "value": "Sí, viaje internacional"
-          }
+          },
+          "displayNumber": "3.1"
         },
         {
           "id": "q-curso",
@@ -162,7 +166,8 @@
             "Introducción a React & TypeScript",
             "Seguridad de la Información"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "4"
         },
         {
           "id": "q-experiencia-previa",
@@ -178,7 +183,8 @@
             "questionId": "q-curso",
             "operator": "equals",
             "value": "Introducción a React & TypeScript"
-          }
+          },
+          "displayNumber": "4.1"
         }
       ]
     },
@@ -191,13 +197,15 @@
           "id": "q-nombre-apoderado",
           "type": "text",
           "label": "Nombre completo del tutor o apoderado legal",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-telefono-tutor",
           "type": "text",
           "label": "Teléfono de emergencia del apoderado",
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-tipo-tutoria",
@@ -208,7 +216,8 @@
             "Tutor Legal",
             "Otro familiar facultado"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         },
         {
           "id": "q-detalles-tutoria",
@@ -219,7 +228,8 @@
             "questionId": "q-tipo-tutoria",
             "operator": "equals",
             "value": "Otro familiar facultado"
-          }
+          },
+          "displayNumber": "3.1"
         }
       ]
     },
@@ -237,7 +247,8 @@
             "No, requiere asistencia de la empresa",
             "No, pero la gestionaré por mi cuenta"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-numero-visa",
@@ -249,7 +260,8 @@
             "questionId": "q-tiene-visa",
             "operator": "equals",
             "value": "Sí, vigente"
-          }
+          },
+          "displayNumber": "1.1"
         },
         {
           "id": "q-documento-asistencia",
@@ -265,7 +277,8 @@
             "questionId": "q-tiene-visa",
             "operator": "equals",
             "value": "No, requiere asistencia de la empresa"
-          }
+          },
+          "displayNumber": "1.2"
         }
       ]
     },
@@ -283,7 +296,8 @@
             "Sí, en hotel corporativo de la empresa",
             "Sí, en domicilio particular o familiar"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-hotel-sucursal",
@@ -298,7 +312,8 @@
             "questionId": "q-requiere-alojamiento",
             "operator": "equals",
             "value": "Sí, en hotel corporativo de la empresa"
-          }
+          },
+          "displayNumber": "1.1"
         },
         {
           "id": "q-direccion-particular",
@@ -310,7 +325,8 @@
             "questionId": "q-requiere-alojamiento",
             "operator": "equals",
             "value": "Sí, en domicilio particular o familiar"
-          }
+          },
+          "displayNumber": "1.2"
         },
         {
           "id": "q-regimen-alimentario",
@@ -326,7 +342,8 @@
             "questionId": "q-requiere-alojamiento",
             "operator": "not_equals",
             "value": "No, resido en la ciudad del curso"
-          }
+          },
+          "displayNumber": "1.3"
         },
         {
           "id": "q-especificar-alergias",
@@ -337,7 +354,8 @@
             "questionId": "q-regimen-alimentario",
             "operator": "equals",
             "value": "Alergias o Restricciones Médicas"
-          }
+          },
+          "displayNumber": "1.3.1"
         }
       ]
     },
@@ -354,7 +372,8 @@
             "Laptop personal",
             "Laptop provista por la empresa"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-os-preferido",
@@ -365,7 +384,8 @@
             "Windows 11",
             "Linux (Ubuntu)"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-os-personalizado",
@@ -376,7 +396,8 @@
             "questionId": "q-os-preferido",
             "operator": "equals",
             "value": "Linux (Ubuntu)"
-          }
+          },
+          "displayNumber": "2.1"
         },
         {
           "id": "q-requiere-pantalla-extra",
@@ -386,7 +407,8 @@
             "Sí, monitor 24\" FHD",
             "No, suficiente con la pantalla de la laptop"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         }
       ]
     }

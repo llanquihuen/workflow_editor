@@ -9,6 +9,7 @@
     "dev_view": "Dev"
   },
   "common": {
+    "confirm": "Confirmar",
     "add": "Añadir",
     "delete": "Eliminar",
     "save": "Guardar",
@@ -78,6 +79,11 @@
     "delete_form_questions_confirm": "Este formulario contiene preguntas. ¿Deseas eliminarlo?\n\"{{name}}\"",
     "delete_question_title": "Eliminar pregunta",
     "delete_question_confirm": "Esta pregunta contiene información. ¿Deseas eliminarla?\n\"{{name}}\"",
+    "delete_question_warning_dependencies": "Las siguientes preguntas dependen de esta respuesta. Sus condiciones de visibilidad serán eliminadas y tendrás que volver a crearlas:",
+    "cannot_delete_linked_option_title": "Alternativa Vinculada",
+    "cannot_delete_linked_option_desc": "La alternativa \"{{name}}\" no puede ser eliminada porque está siendo utilizada como condición de visibilidad en otra pregunta. Desvincule la condición primero.",
+    "cannot_modify_linked_options_title": "Alternativas Vinculadas en Uso",
+    "cannot_modify_linked_options_desc": "Las siguientes alternativas no pueden ser eliminadas o modificadas porque están vinculadas como condiciones: {{name}}. Desvincule las condiciones correspondientes primero.",
     "type": "Tipo:",
     "types": {
       "text": "Texto corto",
@@ -90,6 +96,8 @@
     "visibility": "Visibilidad Condicional",
     "always_visible": "-- Siempre visible --",
     "show_if": "Mostrar si responde a: ",
+    "show_other_forms_options": "Ver preguntas de otros formularios...",
+    "hide_other_forms_options": "Ocultar preguntas de otros formularios",
     "expected_value": "Valor esperado...",
     "field_options": "Opciones del Campo",
     "bulk_add": "Edición Masiva",
@@ -112,6 +120,12 @@
       "contains": "Contiene",
       "greater_than": "Mayor que (>)",
       "less_than": "Menor que (<)"
+    },
+    "simulation": {
+      "title": "🔌 Simulación de Respuestas Externas",
+      "description": "Este formulario tiene preguntas que dependen de otros formularios. Modifica estas respuestas de simulación para ver los cambios en tiempo real:",
+      "select_option": "-- Seleccionar opción --",
+      "test_value_placeholder": "Escribe un valor de prueba..."
     }
   },
   "json": {
@@ -154,7 +168,7 @@
     "has_conditions_tooltip": "Tiene condiciones de activación",
     "no_conditions_tooltip": "Sin condiciones (siempre se ejecuta)",
     "new_task": "Nueva Tarea",
-    "add_task": "+ Añadir Tarea",
+    "add_task": "Añadir Tarea",
     "no_forms": "Sin formularios",
     "no_approvers": "Sin aprobadores",
     "approver_count_one": "aprobador",
@@ -165,6 +179,9 @@
     "questions_count_label": "pregunta",
     "questions_count_label_plural": "preguntas",
     "linked_forms_unlink_tooltip": "Desvincular este formulario",
+    "unlink_form_title": "Desvincular Formulario",
+    "unlink_form_confirm": "¿Estás seguro de que deseas desvincular el formulario \"{{name}}\"?",
+    "unlink_form_warning_dependencies": "Las siguientes tareas dependen de este formulario. Sus condiciones de activación serán eliminadas y tendrás que volver a crearlas:",
     "link_forms_modal_title": "Vincular Formularios a la Tarea",
     "link_forms_button": "Vincular Formularios",
     "available_forms_title": "Formularios Disponibles",
@@ -198,7 +215,23 @@
     "reminders_placeholder": "Ej: Diario, Cada 3 días, etc. (vacío para desactivar)",
     "other_participants_label": "Otros Destinatarios (Separados por comas)",
     "expiration_days_placeholder": "Ej: 5 (0 para ilimitado)",
-    "other_participants_placeholder": "ejemplo1@banco.com, observador@banco.com"
+    "other_participants_placeholder": "ejemplo1@banco.com, observador@banco.com",
+    "validation_form_dep_not_assigned": "Requiere \"{{depFormTitle}}\" (aún no asignado al flujo)",
+    "validation_form_dep_same_task_not_linked": "Requiere \"{{depFormTitle}}\" (debe vincularse antes en esta tarea)",
+    "validation_form_dep_after": "Requiere \"{{depFormTitle}}\" (asignado más adelante en \"{{depTaskName}}\")",
+    "configure_condition_title": "Seleccionar Pregunta de Activación",
+    "configure_skip_condition_title": "Seleccionar Pregunta de Skip",
+    "search_questions_placeholder": "Buscar por pregunta, formulario o tarea...",
+    "no_questions_matching": "No se encontraron preguntas que coincidan con la búsqueda.",
+    "always_execute_desc": "-- Siempre ejecutar (Sin condición) --",
+    "never_skip_desc": "-- Nunca saltar --",
+    "select_question_btn": "Seleccionar",
+    "selected_condition_breadcrumb": "Condición configurada:",
+    "click_to_configure": "Configurar Condición...",
+    "clear_condition_btn": "Eliminar Condición",
+    "task_prefix": "TASK ",
+    "form_prefix": "FORM ",
+    "question_prefix": "Q"
   },
   "dashboard": {
     "title": "Workflows",

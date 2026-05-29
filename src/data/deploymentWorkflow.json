@@ -123,7 +123,8 @@
           "id": "q-version-tag",
           "type": "text",
           "label": "Release Version Tag (e.g. v2.4.0)",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-risk-level",
@@ -134,7 +135,8 @@
             "Medium Risk",
             "High Risk"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-db-migration",
@@ -144,7 +146,8 @@
             "Yes",
             "No"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         },
         {
           "id": "q-breaking-changes",
@@ -154,7 +157,8 @@
             "Yes",
             "No"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "4"
         }
       ]
     },
@@ -167,7 +171,8 @@
           "id": "q-security-scan-url",
           "type": "text",
           "label": "Link to Security Scan Artifacts",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-vulnerabilities-open",
@@ -178,7 +183,8 @@
             "Yes, Low-severity only (Accepted)",
             "Yes, High-severity (Blocker)"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -191,7 +197,8 @@
           "id": "q-rollback-plan",
           "type": "textarea",
           "label": "Detailed Migration Rollback Script/Strategy",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-estimated-downtime",
@@ -202,7 +209,8 @@
             "Under 5 minutes",
             "5 to 30 minutes (Maintenance window required)"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -215,7 +223,8 @@
           "id": "q-notes-url",
           "type": "text",
           "label": "Link to Draft Release Blog/Change Log",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-support-briefed",
@@ -225,7 +234,8 @@
             "Yes, support team has reviewed documentation",
             "No, support team has not yet been notified"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -243,7 +253,8 @@
             "Passed with minor test exclusions",
             "Failed tests outstanding"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-browser-tested",
@@ -254,7 +265,8 @@
             "Mobile Web (iOS/Android)",
             "Native Apps (iOS/Android)"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     }

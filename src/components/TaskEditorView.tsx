@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkflowStore } from '../store/useWorkflowStore';
 import { DUMMY_USERS } from '../utils/constants';
-import type { FormQuestion, TaskCondition, Task } from '../types/workflow.types';
+import type { FormQuestion, TaskCondition, Task, Form } from '../types/workflow.types';
 
 export const TaskEditorView = () => {
   const { t } = useTranslation();
@@ -17,6 +17,13 @@ export const TaskEditorView = () => {
   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [formToUnlink, setFormToUnlink] = useState<{ formId: string; formTitle: string; dependentTasks: Task[] } | null>(null);
+  const [conditionPickerTarget, setConditionPickerTarget] = useState<'condition' | 'skipCondition' | null>(null);
+  const [conditionSearchQuery, setConditionSearchQuery] = useState('');
+  const prevFormRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  const prevFormIdsRef = useRef<string[]>([]);
+  const formsListRef = useRef<HTMLDivElement>(null);
+  const lastTaskIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -40,6 +47,77 @@ export const TaskEditorView = () => {
   const selectedTask = workflow.tasks.find((t) => t.id === selectedTaskId);
   const selectedIndex = workflow.tasks.findIndex((t) => t.id === selectedTaskId);
   const forms = workflow.forms || [];
+
+  useLayoutEffect(() => {
+    if (!formsListRef.current || !selectedTask) return;
+
+    if (lastTaskIdRef.current !== selectedTask.id) {
+      prevFormRectsRef.current.clear();
+      prevFormIdsRef.current = [];
+      lastTaskIdRef.current = selectedTask.id;
+    }
+
+    const children = Array.from(formsListRef.current.children) as HTMLElement[];
+    const prevRects = prevFormRectsRef.current;
+
+    // Get current IDs
+    const currentIds = children
+      .map((child) => child.getAttribute('data-form-id'))
+      .filter(Boolean) as string[];
+
+    const prevIds = prevFormIdsRef.current;
+
+    // Check if the order changed (same elements, different order)
+    const setPrev = new Set(prevIds);
+    const hasSameElements = currentIds.length === prevIds.length && currentIds.every((id) => setPrev.has(id));
+    const isReordered = hasSameElements && currentIds.some((id, idx) => id !== prevIds[idx]);
+
+    const currentRects = new Map<string, DOMRect>();
+
+    // 1. Measure new positions ("Last")
+    children.forEach((child) => {
+      const formId = child.getAttribute('data-form-id');
+      if (formId) {
+        currentRects.set(formId, child.getBoundingClientRect());
+      }
+    });
+
+    // 2. Apply FLIP only if there was an actual reordering of the same elements
+    if (isReordered) {
+      children.forEach((child) => {
+        const formId = child.getAttribute('data-form-id');
+        if (!formId) return;
+
+        const firstRect = prevRects.get(formId);
+        const lastRect = currentRects.get(formId);
+
+        if (firstRect && lastRect) {
+          const deltaY = firstRect.top - lastRect.top;
+          if (deltaY !== 0) {
+            // Snap back synchronously
+            child.style.transform = `translateY(${deltaY}px)`;
+            child.style.transition = 'none';
+
+            // Force reflow
+            child.offsetHeight;
+
+            // Animate smoothly
+            child.style.transition = 'transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            child.style.transform = '';
+
+            // Cleanup transition style
+            setTimeout(() => {
+              if (child) child.style.transition = '';
+            }, 400);
+          }
+        }
+      });
+    }
+
+    // 3. Save new positions
+    prevFormRectsRef.current = currentRects;
+    prevFormIdsRef.current = currentIds;
+  });
 
   // Helper to split user name and role/department
   const parseUser = (fullName: string) => {
@@ -70,24 +148,80 @@ export const TaskEditorView = () => {
   }, [workflow.tasks]);
 
   const previousTasks = selectedIndex > 0 ? workflow.tasks.slice(0, selectedIndex) : [];
-  const availableQuestions: { taskId: string, taskName: string, formId: string, formTitle: string, question: FormQuestion }[] = [];
+  const availableQuestions: { 
+    taskId: string; 
+    taskName: string; 
+    taskNumber: number; 
+    formId: string; 
+    formTitle: string; 
+    formNumber: number; 
+    question: FormQuestion; 
+    questionNumber: string; 
+  }[] = [];
 
   previousTasks.forEach(task => {
-    (task.formIds || []).forEach(formId => {
+    const taskIndex = workflow.tasks.findIndex(t => t.id === task.id) + 1;
+    (task.formIds || []).forEach((formId, fIdx) => {
       const form = forms.find(f => f.id === formId);
       if (form) {
-        form.questions.forEach(q => {
+        form.questions.forEach((q, qIdx) => {
           availableQuestions.push({
             taskId: task.id,
             taskName: task.name,
+            taskNumber: taskIndex,
             formId: form.id,
             formTitle: form.title,
-            question: q
+            formNumber: fIdx + 1,
+            question: q,
+            questionNumber: q.displayNumber || String(qIdx + 1)
           });
         });
       }
     });
   });
+  const groupedQuestions = useMemo(() => {
+    const tasksMap = new Map<string, {
+      taskId: string;
+      taskName: string;
+      taskNumber: number;
+      formsMap: Map<string, {
+        formId: string;
+        formTitle: string;
+        formNumber: number;
+        questions: { id: string; label: string; questionNumber: string }[];
+      }>;
+    }>();
+
+    availableQuestions.forEach(item => {
+      if (!tasksMap.has(item.taskId)) {
+        tasksMap.set(item.taskId, {
+          taskId: item.taskId,
+          taskName: item.taskName,
+          taskNumber: item.taskNumber,
+          formsMap: new Map()
+        });
+      }
+      const tNode = tasksMap.get(item.taskId)!;
+      if (!tNode.formsMap.has(item.formId)) {
+        tNode.formsMap.set(item.formId, {
+          formId: item.formId,
+          formTitle: item.formTitle,
+          formNumber: item.formNumber,
+          questions: []
+        });
+      }
+      tNode.formsMap.get(item.formId)!.questions.push({
+        id: item.question.id,
+        label: item.question.label,
+        questionNumber: item.questionNumber
+      });
+    });
+
+    return Array.from(tasksMap.values()).map(tNode => ({
+      ...tNode,
+      forms: Array.from(tNode.formsMap.values())
+    }));
+  }, [availableQuestions]);
 
   const handleConditionChange = (conditionType: 'condition' | 'skipCondition', field: string, value: string) => {
     if (!selectedTask) return;
@@ -168,6 +302,11 @@ export const TaskEditorView = () => {
 
   const handleAddForm = (formId: string) => {
     if (selectedTask) {
+      const formToLink = forms.find(f => f.id === formId);
+      if (formToLink && getFormValidationError(formToLink)) {
+        return;
+      }
+
       const currentIds = selectedTask.formIds || [];
       if (!currentIds.includes(formId)) {
         updateTask(selectedTask.id, { formIds: [...currentIds, formId] });
@@ -177,11 +316,60 @@ export const TaskEditorView = () => {
     }
   };
 
+  const getTasksDependentOnForm = (formId: string) => {
+    return (workflow.tasks || []).filter(task => 
+      (task.condition && task.condition.formId === formId) || 
+      (task.skipCondition && task.skipCondition.formId === formId)
+    );
+  };
+
   const handleRemoveForm = (formId: string) => {
-    if (selectedTask) {
-      const currentIds = selectedTask.formIds || [];
-      updateTask(selectedTask.id, { formIds: currentIds.filter(id => id !== formId) });
+    if (!selectedTask) return;
+    const formsList = workflow.forms || [];
+    const targetForm = formsList.find(f => f.id === formId);
+    const formTitle = targetForm ? targetForm.title : formId;
+
+    const dependentTasks = getTasksDependentOnForm(formId);
+
+    if (dependentTasks.length > 0) {
+      setFormToUnlink({
+        formId,
+        formTitle,
+        dependentTasks
+      });
+      return;
     }
+
+    unlinkFormDirectly(formId);
+  };
+
+  const unlinkFormDirectly = (formId: string) => {
+    if (!selectedTask) return;
+    const currentIds = selectedTask.formIds || [];
+    updateTask(selectedTask.id, { formIds: currentIds.filter(id => id !== formId) });
+  };
+
+  const handleConfirmUnlinkForm = () => {
+    if (!formToUnlink || !selectedTask) return;
+    const { formId, dependentTasks } = formToUnlink;
+
+    // Unlink the conditions of the dependent tasks
+    dependentTasks.forEach(task => {
+      const updates: Partial<Task> = {};
+      if (task.condition && task.condition.formId === formId) {
+        updates.condition = undefined;
+      }
+      if (task.skipCondition && task.skipCondition.formId === formId) {
+        updates.skipCondition = undefined;
+      }
+      updateTask(task.id, updates);
+    });
+
+    // Unlink the form from the selected task
+    unlinkFormDirectly(formId);
+
+    // Clear modal state
+    setFormToUnlink(null);
   };
 
   const updateNotificationSetting = (key: string, value: any) => {
@@ -202,20 +390,65 @@ export const TaskEditorView = () => {
     }
   };
 
+  const isFormReorderDisabled = (formId: string, direction: 'up' | 'down') => {
+    if (!selectedTask || !selectedTask.formIds) return true;
+    const currentIds = selectedTask.formIds;
+    const index = currentIds.indexOf(formId);
+    if (index === -1) return true;
+
+    if (direction === 'up' && index === 0) return true;
+    if (direction === 'down' && index === currentIds.length - 1) return true;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const swappedIds = [...currentIds];
+    const temp = swappedIds[index];
+    swappedIds[index] = swappedIds[targetIndex];
+    swappedIds[targetIndex] = temp;
+
+    for (let i = 0; i < swappedIds.length; i++) {
+      const fid = swappedIds[i];
+      const formObj = forms.find(f => f.id === fid);
+      if (!formObj) continue;
+      
+      for (const q of formObj.questions) {
+        if (q.condition && q.condition.formId && q.condition.formId !== fid) {
+          const depFormId = q.condition.formId;
+          const depIndex = swappedIds.indexOf(depFormId);
+          if (depIndex !== -1 && depIndex > i) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
   const handleReorderForm = (formId: string, direction: 'up' | 'down') => {
+    if (isFormReorderDisabled(formId, direction)) return;
     if (!selectedTask || !selectedTask.formIds) return;
     const currentIds = [...selectedTask.formIds];
     const index = currentIds.indexOf(formId);
     if (index === -1) return;
 
-    if (direction === 'up' && index > 0) {
-      const temp = currentIds[index];
-      currentIds[index] = currentIds[index - 1];
-      currentIds[index - 1] = temp;
-    } else if (direction === 'down' && index < currentIds.length - 1) {
-      const temp = currentIds[index];
-      currentIds[index] = currentIds[index + 1];
-      currentIds[index + 1] = temp;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const temp = currentIds[index];
+    currentIds[index] = currentIds[targetIndex];
+    currentIds[targetIndex] = temp;
+
+    // Capture forms positions right before state update to ensure 100% stable pre-move coordinates
+    if (formsListRef.current) {
+      const children = Array.from(formsListRef.current.children) as HTMLElement[];
+      const rects = new Map<string, DOMRect>();
+      const ids: string[] = [];
+      children.forEach((child) => {
+        const fId = child.getAttribute('data-form-id');
+        if (fId) {
+          rects.set(fId, child.getBoundingClientRect());
+          ids.push(fId);
+        }
+      });
+      prevFormRectsRef.current = rects;
+      prevFormIdsRef.current = ids;
     }
 
     updateTask(selectedTask.id, { formIds: currentIds });
@@ -244,6 +477,43 @@ export const TaskEditorView = () => {
       f.title.toLowerCase().includes(searchTerm)
     );
   }, [forms, selectedTask?.formIds, otherTasksForms, searchTerm]);
+
+  // Helper to validate cross-form question dependencies
+  const getFormValidationError = (f: Form) => {
+    if (!selectedTask) return null;
+    for (const q of f.questions) {
+      if (q.condition && q.condition.formId && q.condition.formId !== f.id) {
+        const depFormId = q.condition.formId;
+        const depForm = forms.find(form => form.id === depFormId);
+        
+        // Find if this dependent form is assigned to any task
+        const depTask = workflow.tasks.find(t => t.formIds?.includes(depFormId));
+        
+        if (!depTask) {
+          return t('tasks.validation_form_dep_not_assigned', {
+            depFormTitle: depForm?.title || 'Formulario Desconocido'
+          });
+        }
+        
+        // If assigned to the same task, it must already be linked in selectedTask.formIds
+        if (depTask.id === selectedTask.id) {
+          const isAlreadyLinked = selectedTask.formIds?.includes(depFormId);
+          if (!isAlreadyLinked) {
+            return t('tasks.validation_form_dep_same_task_not_linked', {
+              depFormTitle: depForm?.title || 'Formulario Desconocido'
+            });
+          }
+        } else if (depTask.order >= selectedTask.order) {
+          // If assigned to a later task
+          return t('tasks.validation_form_dep_after', {
+            depFormTitle: depForm?.title || 'Formulario Desconocido',
+            depTaskName: depTask.name
+          });
+        }
+      }
+    }
+    return null;
+  };
 
   // 2. Forms assigned to other tasks
   const linkedToOtherForms = useMemo(() => {
@@ -966,7 +1236,7 @@ export const TaskEditorView = () => {
         }
       `}</style>
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
           <h3 style={{ margin: 0 }}>{t('tasks.editor_title')}</h3>
           {selectedTask && showStickyHeader && (
             <div 
@@ -974,17 +1244,17 @@ export const TaskEditorView = () => {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: 'var(--spacing-xs)',
                 background: 'rgba(59, 130, 246, 0.1)',
                 border: '1px solid rgba(59, 130, 246, 0.25)',
                 color: 'var(--primary)',
-                padding: '4px 10px',
+                padding: 'var(--spacing-xs) var(--spacing-sm)',
                 borderRadius: '16px',
-                fontSize: '0.75rem',
+                fontSize: 'var(--text-xs)',
                 fontWeight: '600',
                 animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)',
-                marginLeft: '8px'
+                marginLeft: 'var(--spacing-sm)'
               }}
             >
               <span style={{ 
@@ -996,7 +1266,7 @@ export const TaskEditorView = () => {
                 display: 'inline-flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                fontSize: '0.65rem',
+                fontSize: 'var(--text-xs)',
                 fontWeight: 'bold'
               }}>
                 {selectedTask.order}
@@ -1071,19 +1341,19 @@ export const TaskEditorView = () => {
         </div>
 
         {!selectedTask ? (
-          <div className="empty-state" style={{ marginTop: '20px' }}>
+          <div className="empty-state" style={{ marginTop: 'var(--spacing-xl)' }}>
             <p>{t('tasks.empty_state')}</p>
           </div>
         ) : (
           <div className="editor-form">
 
             <div className="editor-section">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
                 <h4 style={{ margin: 0 }}>{t('tasks.basic_config')}</h4>
 
 
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                   {/* Indicador de Condiciones */}
                   {selectedTask.condition ? (
                       <div title={t('tasks.has_conditions_tooltip', { defaultValue: 'Tiene condiciones de activación' })} style={{
@@ -1093,7 +1363,7 @@ export const TaskEditorView = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#b45309',
-                        padding: '4px',
+                        padding: 'var(--spacing-xs)',
                         width: '24px',
                         height: '24px',
                         borderRadius: '50%',
@@ -1120,7 +1390,7 @@ export const TaskEditorView = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: '#d97706',
-                      padding: '4px',
+                      padding: 'var(--spacing-xs)',
                       width: '24px',
                       height: '24px',
                       cursor: 'help'
@@ -1137,18 +1407,18 @@ export const TaskEditorView = () => {
                   <div className="step-order-badge" style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: 'var(--spacing-sm)',
                     backgroundColor: 'rgba(59, 130, 246, 0.08)',
                     border: '1px solid rgba(59, 130, 246, 0.15)',
-                    padding: '5px 10px',
+                    padding: 'var(--spacing-xs) var(--spacing-sm)',
                     borderRadius: '8px',
-                    fontSize: '13px',
+                    fontSize: 'var(--text-sm)',
                     color: 'var(--primary)',
                     fontWeight: '600'
                   }}>
                     <span style={{ fontWeight: '700' }}>Reorder tasks</span>
                     <span>#{selectedTask.order}</span>
-                    <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }}>
+                    <div style={{ display: 'flex', gap: 'var(--spacing-xs)', marginLeft: 'var(--spacing-xs)' }}>
                       <button
                         disabled={selectedIndex <= 1}
                         onClick={() => reorderTask(selectedTask.id, 'up')}
@@ -1160,7 +1430,7 @@ export const TaskEditorView = () => {
                           width: '24px',
                           height: '24px',
                           borderRadius: '6px',
-                          fontSize: '13px',
+                          fontSize: 'var(--text-sm)',
                           opacity: selectedIndex <= 1 ? 0.3 : 1,
                           color: 'var(--primary)',
                           lineHeight: 1,
@@ -1185,7 +1455,7 @@ export const TaskEditorView = () => {
                           width: '24px',
                           height: '24px',
                           borderRadius: '6px',
-                          fontSize: '13px',
+                          fontSize: 'var(--text-sm)',
                           opacity: (selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1) ? 0.3 : 1,
                           color: 'var(--primary)',
                           lineHeight: 1,
@@ -1247,7 +1517,7 @@ export const TaskEditorView = () => {
                   style={editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) ? { borderColor: '#ef4444' } : {}}
                 />
                 {editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) && (
-                  <span className="error-text" style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  <span className="error-text" style={{ color: 'var(--danger)', fontSize: 'var(--text-xs)', marginTop: 'var(--spacing-xs)', display: 'block' }}>
                     {t('tasks.duplicate_name_error')}
                   </span>
                 )}
@@ -1345,7 +1615,7 @@ export const TaskEditorView = () => {
                   </div>
 
                   {/* Requirement Checkbox */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-lg)' }}>
                     <label className="ios-switch" style={{ width: '40px', height: '22px', display: 'inline-block', position: 'relative' }}>
                       <input
                           type="checkbox"
@@ -1354,13 +1624,13 @@ export const TaskEditorView = () => {
                       />
                       <span className="ios-slider"></span>
                     </label>
-                    <span style={{ fontSize: '13.5px', fontWeight: '500', color: 'var(--text-main)' }}>
+                    <span style={{ fontSize: 'var(--text-sm)', fontWeight: '500', color: 'var(--text-main)' }}>
                       {t('tasks.all_approvers_required_label')}
                     </span>
                   </div>
                 </div>
               ) : selectedTask.taskType === 'dynamic' ? (
-                <div className="editor-field" style={{ marginTop: '16px' }}>
+                <div className="editor-field" style={{ marginTop: 'var(--spacing-lg)' }}>
                   <div className="approvers-dynamic-notice">
                     <div className="notice-icon">⚡</div>
                     <div className="notice-content">
@@ -1370,7 +1640,7 @@ export const TaskEditorView = () => {
                   </div>
                 </div>
               ) : (
-                <div className="editor-field" style={{ marginTop: '16px' }}>
+                <div className="editor-field" style={{ marginTop: 'var(--spacing-lg)' }}>
                   <div className="approvers-iso-notice">
                     <div className="notice-icon">🛡️</div>
                     <div className="notice-content">
@@ -1384,37 +1654,40 @@ export const TaskEditorView = () => {
 
             <div className="editor-section">
               <h4>{t('tasks.linked_forms')}</h4>
-              <p className="form-desc" style={{ marginBottom: '10px' }}>{t('tasks.select_global_forms')}</p>
+              <p className="form-desc" style={{ marginBottom: 'var(--spacing-sm)' }}>{t('tasks.select_global_forms')}</p>
 
               {/* 📋 Associated Forms Summary */}
               <div className="associated-forms-summary">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <h5 style={{ margin: 0, fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)' }}>
+                  <h5 style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {t('tasks.linked_forms_summary_title')}
                   </h5>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: '600' }}>
                     {(selectedTask.formIds || []).length} {t('tasks.linked_forms').toLowerCase()}
                   </span>
                 </div>
 
                 {(!selectedTask.formIds || selectedTask.formIds.length === 0) ? (
                   <div className="no-linked-forms-banner">
-                    <span style={{ fontSize: '1.25rem' }}>📋</span>
+                    <span style={{ fontSize: 'var(--text-lg)' }}>📋</span>
                     <span>{t('tasks.no_linked_forms_yet')}</span>
                   </div>
                 ) : (
-                  <div className="summary-cards-stack">
-                    {selectedTask.formIds.map((id, idx) => {
+                  <div ref={formsListRef} className="summary-cards-stack">
+                    {selectedTask.formIds.map((id) => {
                       const form = forms.find(f => f.id === id);
                       if (!form) return null;
 
                       const questionCount = form.questions.length;
+                      const isUpDisabled = isFormReorderDisabled(form.id, 'up');
+                      const isDownDisabled = isFormReorderDisabled(form.id, 'down');
 
                       return (
                         <div 
                           key={id} 
                           className="form-summary-card" 
-                          style={{ padding: '12px 14px', cursor: 'pointer' }}
+                          data-form-id={form.id}
+                          style={{ padding: 'var(--spacing-md) var(--spacing-md)', cursor: 'pointer' }}
                           onClick={() => {
                             setSelectedForm(form.id);
                             setCurrentView('forms');
@@ -1422,42 +1695,42 @@ export const TaskEditorView = () => {
                           title={t('tasks.click_to_edit_form')}
                         >
                           <div className="summary-card-header" style={{ marginBottom: 0, alignItems: 'center' }}>
-                            <div className="summary-card-title-group" style={{ minWidth: 0, flex: 1, gap: '10px' }}>
+                            <div className="summary-card-title-group" style={{ minWidth: 0, flex: 1, gap: 'var(--spacing-sm)' }}>
                               <span className="summary-card-icon" style={{ flexShrink: 0 }}>📄</span>
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <h4 className="summary-card-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0px' }}>{form.title}</h4>
                                 {form.description ? (
                                   <p className="summary-card-desc" style={{ marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.description}</p>
                                 ) : null}
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', display: 'inline-block', marginTop: '4px' }}>
+                                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: '600', display: 'inline-block', marginTop: 'var(--spacing-xs)' }}>
                                   {questionCount} {questionCount === 1 ? t('tasks.questions_count_label') : t('tasks.questions_count_label_plural')}
                                 </span>
                               </div>
                             </div>
                             
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                               {/* Up Button */}
                               <button
                                 type="button"
-                                disabled={idx === 0}
+                                disabled={isUpDisabled}
                                 onClick={() => handleReorderForm(form.id, 'up')}
                                 title={t('common.up')}
                                 style={{
                                   background: 'transparent',
                                   border: 'none',
-                                  color: idx === 0 ? 'var(--text-muted)' : 'var(--primary)',
-                                  opacity: idx === 0 ? 0.25 : 0.8,
-                                  cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                                  color: isUpDisabled ? 'var(--text-muted)' : 'var(--primary)',
+                                  opacity: isUpDisabled ? 0.25 : 0.8,
+                                  cursor: isUpDisabled ? 'not-allowed' : 'pointer',
                                   width: '20px',
                                   height: '20px',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  fontSize: '11px',
+                                  fontSize: 'var(--text-xs)',
                                   borderRadius: '4px',
                                   transition: 'background-color 0.15s'
                                 }}
-                                onMouseEnter={(e) => { if (idx > 0) e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'; }}
+                                onMouseEnter={(e) => { if (!isUpDisabled) e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                               >
                                 ▲
@@ -1466,25 +1739,25 @@ export const TaskEditorView = () => {
                               {/* Down Button */}
                               <button
                                 type="button"
-                                disabled={idx === (selectedTask.formIds || []).length - 1}
+                                disabled={isDownDisabled}
                                 onClick={() => handleReorderForm(form.id, 'down')}
                                 title={t('common.down')}
                                 style={{
                                   background: 'transparent',
                                   border: 'none',
-                                  color: idx === (selectedTask.formIds || []).length - 1 ? 'var(--text-muted)' : 'var(--primary)',
-                                  opacity: idx === (selectedTask.formIds || []).length - 1 ? 0.25 : 0.8,
-                                  cursor: idx === (selectedTask.formIds || []).length - 1 ? 'not-allowed' : 'pointer',
+                                  color: isDownDisabled ? 'var(--text-muted)' : 'var(--primary)',
+                                  opacity: isDownDisabled ? 0.25 : 0.8,
+                                  cursor: isDownDisabled ? 'not-allowed' : 'pointer',
                                   width: '20px',
                                   height: '20px',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  fontSize: '11px',
+                                  fontSize: 'var(--text-xs)',
                                   borderRadius: '4px',
                                   transition: 'background-color 0.15s'
                                 }}
-                                onMouseEnter={(e) => { if (idx < (selectedTask.formIds || []).length - 1) e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'; }}
+                                onMouseEnter={(e) => { if (!isDownDisabled) e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                               >
                                 ▼
@@ -1514,11 +1787,11 @@ export const TaskEditorView = () => {
                 )}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--spacing-md)' }}>
                 <button
                   type="button"
                   className="btn-premium-action"
-                  style={{ width: '100%', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  style={{ width: '100%', padding: 'var(--spacing-sm) var(--spacing-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--spacing-sm)' }}
                   onClick={() => { setFormSearch(''); setShowFormModal(true); }}
                 >
                   📄 {t('tasks.link_forms_button')}
@@ -1529,26 +1802,108 @@ export const TaskEditorView = () => {
             {selectedIndex > 0 && (
               <div className="editor-section">
                 <h4>{t('tasks.activation_condition')}</h4>
-                <p className="form-desc" style={{ marginBottom: '15px' }}>{t('tasks.activation_desc')}</p>
+                <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>{t('tasks.activation_desc')}</p>
 
                 <div className="editor-field">
                   <label>{t('tasks.depends_on')}</label>
-                  <select
-                    className="form-input"
-                    value={selectedTask.condition ? `${selectedTask.condition.dependentTaskId}|${selectedTask.condition.formId}|${selectedTask.condition.questionId}` : ''}
-                    onChange={(e) => handleConditionChange('condition', 'question', e.target.value)}
-                  >
-                    <option value="">{t('tasks.always_execute')}</option>
-                    {availableQuestions.map((item) => (
-                      <option key={`${item.taskId}|${item.formId}|${item.question.id}`} value={`${item.taskId}|${item.formId}|${item.question.id}`}>
-                        {item.taskName} &gt; {item.formTitle} &gt; {item.question.label}
-                      </option>
-                    ))}
-                  </select>
+                  {(() => {
+                    const activeConditionItem = selectedTask.condition 
+                      ? availableQuestions.find(item => 
+                          item.taskId === selectedTask.condition?.dependentTaskId &&
+                          item.formId === selectedTask.condition?.formId &&
+                          item.question.id === selectedTask.condition?.questionId
+                        )
+                      : null;
+
+                    if (selectedTask.condition && activeConditionItem) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 'var(--spacing-sm)',
+                          padding: 'var(--spacing-md) var(--spacing-md)',
+                          background: 'var(--bg-dark)',
+                          border: '1px solid var(--panel-border)',
+                          borderRadius: '8px',
+                          width: '100%'
+                        }}>
+                          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                            {t('tasks.selected_condition_breadcrumb')}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-xs)', fontSize: 'var(--text-xs)' }}>
+                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                                {t('tasks.task_prefix')}{activeConditionItem.taskNumber}
+                              </span>
+                              {activeConditionItem.taskName}
+                            </span>
+                            <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                                {t('tasks.form_prefix')}{activeConditionItem.formNumber}
+                              </span>
+                              {activeConditionItem.formTitle}
+                            </span>
+                            <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                                {t('tasks.question_prefix')}{activeConditionItem.questionNumber}
+                              </span>
+                              {activeConditionItem.question.label}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-xs)' }}>
+                            <button
+                              type="button"
+                              className="btn-premium-action"
+                              onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('condition'); }}
+                              style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1 }}
+                            >
+                              {t('tasks.click_to_configure')}
+                            </button>
+                            <button
+                              type="button"
+                              className="form-delete-btn"
+                              onClick={() => handleConditionChange('condition', 'question', '')}
+                              style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1, color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                            >
+                              {t('tasks.clear_condition_btn')}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        background: 'rgba(255,255,255,0.01)',
+                        border: '1px dashed var(--panel-border)',
+                        borderRadius: '8px',
+                        width: '100%',
+                        gap: 'var(--spacing-sm)'
+                      }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic', wordBreak: 'break-word', flex: 1 }}>
+                          🟢 {t('tasks.always_execute_desc') || t('tasks.always_execute')}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn-premium-action"
+                          onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('condition'); }}
+                          style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: 'var(--text-xs)', flexShrink: 0 }}
+                        >
+                          {t('tasks.click_to_configure')}
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {selectedTask.condition && (
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
                     <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
                       <label>{t('tasks.operator')}</label>
                       <select
@@ -1610,26 +1965,106 @@ export const TaskEditorView = () => {
             {selectedIndex > 0 && (
               <div className="editor-section">
                 <h4>{t('tasks.skip_condition')}</h4>
-                <p className="form-desc" style={{ marginBottom: '15px' }}>{t('tasks.skip_desc')}</p>
+                <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>{t('tasks.skip_desc')}</p>
 
                 <div className="editor-field">
                   <label>{t('tasks.skip_depends_on')}</label>
-                  <select
-                    className="form-input"
-                    value={selectedTask.skipCondition ? `${selectedTask.skipCondition.dependentTaskId}|${selectedTask.skipCondition.formId}|${selectedTask.skipCondition.questionId}` : ''}
-                    onChange={(e) => handleConditionChange('skipCondition', 'question', e.target.value)}
-                  >
-                    <option value="">{t('tasks.never_skip')}</option>
-                    {availableQuestions.map((item) => (
-                      <option key={`skip-${item.taskId}|${item.formId}|${item.question.id}`} value={`${item.taskId}|${item.formId}|${item.question.id}`}>
-                        {item.taskName} &gt; {item.formTitle} &gt; {item.question.label}
-                      </option>
-                    ))}
-                  </select>
+                  {(() => {
+                    const activeSkipConditionItem = selectedTask.skipCondition 
+                      ? availableQuestions.find(item => 
+                          item.taskId === selectedTask.skipCondition?.dependentTaskId &&
+                          item.formId === selectedTask.skipCondition?.formId &&
+                          item.question.id === selectedTask.skipCondition?.questionId
+                        )
+                      : null;
+
+                    if (selectedTask.skipCondition && activeSkipConditionItem) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 'var(--spacing-sm)',
+                          padding: 'var(--spacing-md) var(--spacing-md)',
+                          background: 'var(--bg-dark)',
+                          border: '1px solid var(--panel-border)',
+                          borderRadius: '8px',
+                          width: '100%'
+                        }}>
+                          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                            {t('tasks.selected_condition_breadcrumb')}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-xs)', fontSize: 'var(--text-xs)' }}>
+                                           <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                                {t('tasks.task_prefix')}{activeSkipConditionItem.taskNumber}
+                              </span>
+                              {activeSkipConditionItem.taskName}
+                            </span>
+                            <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                                {t('tasks.form_prefix')}{activeSkipConditionItem.formNumber}
+                              </span>
+                              {activeSkipConditionItem.formTitle}
+                            </span>
+                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                                {t('tasks.question_prefix')}{activeSkipConditionItem.questionNumber}
+                              </span>
+                              {activeSkipConditionItem.question.label}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-xs)' }}>
+                            <button
+                              type="button"
+                              className="btn-premium-action"
+                              onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('skipCondition'); }}
+                              style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1 }}
+                            >{t('tasks.click_to_configure')}
+                            </button>
+                            <button
+                              type="button"
+                              className="form-delete-btn"
+                              onClick={() => handleConditionChange('skipCondition', 'question', '')}
+                              style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1, color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                            >
+                              {t('tasks.clear_condition_btn')}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        background: 'rgba(255,255,255,0.01)',
+                        border: '1px dashed var(--panel-border)',
+                        borderRadius: '8px',
+                        width: '100%',
+                        gap: 'var(--spacing-sm)'
+                      }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic', wordBreak: 'break-word', flex: 1 }}>
+                          🟢 {t('tasks.never_skip_desc') || t('tasks.never_skip')}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn-premium-action"
+                          onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('skipCondition'); }}
+                          style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: 'var(--text-xs)', flexShrink: 0 }}
+                        >
+                          {t('tasks.click_to_configure')}
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {selectedTask.skipCondition && (
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
                     <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
                       <label>{t('tasks.operator')}</label>
                       <select
@@ -1690,12 +2125,12 @@ export const TaskEditorView = () => {
             {/* New section: Expiración y Notificaciones */}
             <div className="editor-section">
               <h4>{t('tasks.expiration_and_notifications')}</h4>
-              <p className="form-desc" style={{ marginBottom: '15px' }}>
+              <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>
                 {t('tasks.expiration_and_notifications_desc')}
               </p>
 
               {/* Expiration Days input */}
-              <div className="editor-field" style={{ marginTop: '15px' }}>
+              <div className="editor-field" style={{ marginTop: 'var(--spacing-md)' }}>
                 <label>{t('tasks.expiration_days_label')}</label>
                 <input
                     type="number"
@@ -1705,21 +2140,21 @@ export const TaskEditorView = () => {
                     value={selectedTask.expirationDays || ''}
                     onChange={(e) => updateTask(selectedTask.id, { expirationDays: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                 />
-                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--spacing-xs)' }}>
                   {t('tasks.expiration_days_desc')}
                 </span>
               </div>
 
               {/* Sub-section: Notificaciones por correo */}
-              <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '15px' }}>
-                <h5 style={{ margin: '0 0 12px 0', fontSize: '11.5px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '0.05em', fontWeight: '700' }}>
+              <div style={{ marginTop: 'var(--spacing-xl)', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 'var(--spacing-md)' }}>
+                <h5 style={{ margin: '0 0 var(--spacing-md) 0', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '0.05em', fontWeight: '700' }}>
                   {t('tasks.email_prefs_title')}
                 </h5>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
 
                   {/* SendMail switch */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                     <label className="ios-switch" style={{ width: '40px', height: '22px', flexShrink: 0, display: 'inline-block', position: 'relative' }}>
                       <input
                           type="checkbox"
@@ -1728,13 +2163,13 @@ export const TaskEditorView = () => {
                       />
                       <span className="ios-slider"></span>
                     </label>
-                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-main)' }}>
                       {t('tasks.send_mail_label')}
                     </span>
                   </div>
 
                   {/* SendWorkflowToParticipants switch */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                     <label className="ios-switch" style={{ width: '40px', height: '22px', flexShrink: 0, display: 'inline-block', position: 'relative' }}>
                       <input
                           type="checkbox"
@@ -1743,13 +2178,13 @@ export const TaskEditorView = () => {
                       />
                       <span className="ios-slider"></span>
                     </label>
-                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-main)' }}>
                       {t('tasks.send_wf_label')}
                     </span>
                   </div>
 
                   {/* SendOtherUsers switch */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                     <label className="ios-switch" style={{ width: '40px', height: '22px', flexShrink: 0, display: 'inline-block', position: 'relative' }}>
                       <input
                           type="checkbox"
@@ -1758,13 +2193,13 @@ export const TaskEditorView = () => {
                       />
                       <span className="ios-slider"></span>
                     </label>
-                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-main)' }}>
                       {t('tasks.send_other_label')}
                     </span>
                   </div>
 
                   {/* Reminders input */}
-                  <div className="editor-field" style={{ marginTop: '6px' }}>
+                  <div className="editor-field" style={{ marginTop: 'var(--spacing-xs)' }}>
                     <label>{t('tasks.reminders_label')}</label>
                     <input
                         type="text"
@@ -1807,7 +2242,7 @@ export const TaskEditorView = () => {
               </button>
             </div>
 
-            <div className="modal-card-body" style={{ overflowY: 'auto', flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div className="modal-card-body" style={{ overflowY: 'auto', flex: 1, padding: 'var(--spacing-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
               <div className="editor-field" style={{ marginBottom: 0 }}>
                 <label>{t('common.search')}</label>
                 <input
@@ -1822,55 +2257,75 @@ export const TaskEditorView = () => {
 
               {forms.length === 0 ? (
                 <div className="dropdown-info-card">
-                  <span style={{ fontSize: '1.5rem', marginBottom: '4px' }}>📝</span>
+                  <span style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--spacing-xs)' }}>📝</span>
                   <strong>{t('tasks.no_forms_created_title')}</strong>
                   <p style={{ margin: 0, opacity: 0.8 }}>{t('tasks.no_forms_created_desc')}</p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', overflowY: 'auto', paddingRight: 'var(--spacing-xs)' }}>
                   
                   {/* 1. SECTION: Available Forms */}
                   <div>
-                    <div className="dropdown-category-title" style={{ marginTop: 0, paddingLeft: 0, fontSize: '11px' }}>
+                    <div className="dropdown-category-title" style={{ marginTop: 0, paddingLeft: 0, fontSize: 'var(--text-xs)' }}>
                       {t('tasks.available_forms_title')} ({availableForms.length})
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
                       {availableForms.length > 0 ? (
-                        availableForms.map(f => (
-                          <div 
-                            key={f.id} 
-                            className="form-dropdown-option available" 
-                            style={{ border: '1px solid rgba(255, 255, 255, 0.05)', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '8px', cursor: 'pointer' }}
-                            onClick={() => handleAddForm(f.id)}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                              <span>📄</span>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <span style={{ fontWeight: '600', display: 'block', fontSize: '13px' }}>{f.title}</span>
-                                {f.description && <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.description}</span>}
+                        availableForms.map(f => {
+                          const validationError = getFormValidationError(f);
+                          const isDisabled = !!validationError;
+                          return (
+                            <div 
+                              key={f.id} 
+                              className={`form-dropdown-option available ${isDisabled ? 'disabled' : ''}`}
+                              style={{ 
+                                border: isDisabled ? '1px dashed rgba(239, 68, 68, 0.25)' : '1px solid rgba(255, 255, 255, 0.05)', 
+                                padding: 'var(--spacing-sm) var(--spacing-md)', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between', 
+                                borderRadius: '8px', 
+                                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                opacity: isDisabled ? 0.65 : 1,
+                                background: isDisabled ? 'rgba(239, 68, 68, 0.02)' : undefined
+                              }}
+                              onClick={() => { if (!isDisabled) handleAddForm(f.id); }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', minWidth: 0, flex: 1 }}>
+                                <span>{isDisabled ? '⚠️' : '📄'}</span>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <span style={{ fontWeight: '600', display: 'block', fontSize: 'var(--text-sm)', color: isDisabled ? 'var(--danger)' : undefined }}>{f.title}</span>
+                                  {isDisabled ? (
+                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)', fontWeight: '600', display: 'block', marginTop: '2px' }}>
+                                      {validationError}
+                                    </span>
+                                  ) : f.description ? (
+                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.description}</span>
+                                  ) : null}
+                                </div>
                               </div>
+                              <span className="option-badge available" style={{ marginLeft: 'var(--spacing-sm)', flexShrink: 0, backgroundColor: isDisabled ? 'rgba(239, 68, 68, 0.1)' : undefined, color: isDisabled ? 'var(--danger)' : undefined }}>
+                                {f.questions.length} {f.questions.length === 1 ? t('tasks.questions_count_label') : t('tasks.questions_count_label_plural')}
+                              </span>
                             </div>
-                            <span className="option-badge available" style={{ marginLeft: '10px', flexShrink: 0 }}>
-                              {f.questions.length} {f.questions.length === 1 ? t('tasks.questions_count_label') : t('tasks.questions_count_label_plural')}
-                            </span>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                         searchTerm !== '' ? (
-                          <div style={{ padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          <div style={{ padding: 'var(--spacing-sm) var(--spacing-sm)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                             🔍 {t('tasks.no_forms_matching', { searchTerm: formSearch })}
                           </div>
                         ) : (
                           totalFreeFormsCount === 0 ? (
-                            <div className="dropdown-info-card warning" style={{ margin: '4px 0', width: '100%' }}>
-                              <span style={{ fontSize: '1.3rem', marginBottom: '4px' }}>💡</span>
+                            <div className="dropdown-info-card warning" style={{ margin: 'var(--spacing-xs) 0', width: '100%' }}>
+                              <span style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--spacing-xs)' }}>💡</span>
                               <strong style={{ color: '#d97706' }}>{t('tasks.all_forms_assigned_title')}</strong>
-                              <p style={{ margin: 0, opacity: 0.85, fontSize: '11px', lineHeight: '1.4' }}>
+                              <p style={{ margin: 0, opacity: 0.85, fontSize: 'var(--text-xs)', lineHeight: '1.4' }}>
                                 {t('tasks.all_forms_assigned_desc')}
                               </p>
                             </div>
                           ) : (
-                            <div style={{ padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            <div style={{ padding: 'var(--spacing-sm) var(--spacing-sm)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                               {t('tasks.no_available_forms')}
                             </div>
                           )
@@ -1882,26 +2337,26 @@ export const TaskEditorView = () => {
                   {/* 2. SECTION: Forms already linked to current task */}
                   {alreadyLinkedForms.length > 0 && (
                     <div>
-                      <div className="dropdown-category-title" style={{ paddingLeft: 0, fontSize: '11px' }}>
+                      <div className="dropdown-category-title" style={{ paddingLeft: 0, fontSize: 'var(--text-xs)' }}>
                         {t('tasks.linked_to_this_step')} ({alreadyLinkedForms.length})
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
                         {alreadyLinkedForms.map(f => (
                           <div 
                             key={f.id} 
                             className="form-dropdown-option linked"
-                            style={{ border: '1px solid rgba(59, 130, 246, 0.2)', padding: '10px 12px', opacity: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '8px' }}
+                            style={{ border: '1px solid rgba(59, 130, 246, 0.2)', padding: 'var(--spacing-sm) var(--spacing-md)', opacity: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '8px' }}
                             onClick={() => handleRemoveForm(f.id)}
                             title={t('tasks.linked_forms_unlink_tooltip')}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', minWidth: 0, flex: 1 }}>
                               <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span>
                               <div style={{ minWidth: 0, flex: 1 }}>
-                                <span style={{ fontWeight: '600', display: 'block', fontSize: '13px', color: 'var(--primary)' }}>{f.title}</span>
-                                {f.description && <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.description}</span>}
+                                <span style={{ fontWeight: '600', display: 'block', fontSize: 'var(--text-sm)', color: 'var(--primary)' }}>{f.title}</span>
+                                {f.description && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.description}</span>}
                               </div>
                             </div>
-                            <span className="option-badge linked" style={{ marginLeft: '10px', flexShrink: 0 }}>
+                            <span className="option-badge linked" style={{ marginLeft: 'var(--spacing-sm)', flexShrink: 0 }}>
                               {t('common.unlink')}
                             </span>
                           </div>
@@ -1913,25 +2368,25 @@ export const TaskEditorView = () => {
                   {/* 3. SECTION: Forms linked to other tasks */}
                   {linkedToOtherForms.length > 0 && (
                     <div>
-                      <div className="dropdown-category-title" style={{ paddingLeft: 0, fontSize: '11px' }}>
+                      <div className="dropdown-category-title" style={{ paddingLeft: 0, fontSize: 'var(--text-xs)' }}>
                         {t('tasks.assigned_to_other_steps')} ({linkedToOtherForms.length})
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
                         {linkedToOtherForms.map(f => (
                           <div 
                             key={f.id} 
                             className="form-dropdown-option assigned-other"
-                            style={{ border: '1px solid rgba(255, 255, 255, 0.05)', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '8px' }}
+                            style={{ border: '1px solid rgba(255, 255, 255, 0.05)', padding: 'var(--spacing-sm) var(--spacing-md)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '8px' }}
                             title={t('tasks.assigned_to_step', { stepName: otherTasksForms.get(f.id) })}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', minWidth: 0, flex: 1 }}>
                               <span>🔒</span>
                               <div style={{ minWidth: 0, flex: 1 }}>
-                                <span style={{ fontWeight: '600', display: 'block', fontSize: '13px' }}>{f.title}</span>
-                                {f.description && <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.description}</span>}
+                                <span style={{ fontWeight: '600', display: 'block', fontSize: 'var(--text-sm)' }}>{f.title}</span>
+                                {f.description && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.description}</span>}
                               </div>
                             </div>
-                            <span className="option-badge assigned-other" style={{ marginLeft: '10px', flexShrink: 0 }}>
+                            <span className="option-badge assigned-other" style={{ marginLeft: 'var(--spacing-sm)', flexShrink: 0 }}>
                               {otherTasksForms.get(f.id)}
                             </span>
                           </div>
@@ -1985,6 +2440,285 @@ export const TaskEditorView = () => {
                 style={{ backgroundColor: 'var(--danger)' }}
               >
                 {t('common.delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {formToUnlink && (
+        <div className="modal-overlay" onClick={() => { setFormToUnlink(null); }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-card-header">
+              <h2>{t('tasks.unlink_form_title')}</h2>
+              <button className="btn-close-modal" onClick={() => { setFormToUnlink(null); }}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-card-body">
+              <p>{t('tasks.unlink_form_confirm', { name: formToUnlink.formTitle })}</p>
+              {formToUnlink.dependentTasks.length > 0 && (
+                <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-md)', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                  <p style={{ color: 'var(--danger)', fontWeight: '600', marginBottom: 'var(--spacing-sm)', fontSize: 'var(--text-sm)' }}>
+                    ⚠️ {t('tasks.unlink_form_warning_dependencies')}
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: 'var(--spacing-xl)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                    {formToUnlink.dependentTasks.map((depTask, idx) => (
+                      <li key={idx} style={{ marginBottom: 'var(--spacing-xs)' }}>
+                        <strong>{depTask.name}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-card-footer">
+              <button
+                type="button"
+                className="btn-modal-secondary"
+                onClick={() => { setFormToUnlink(null); }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn-modal-primary"
+                onClick={handleConfirmUnlinkForm}
+                style={{ backgroundColor: 'var(--danger)' }}
+              >
+                {t('common.delete') || t('common.confirm') || 'OK'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {conditionPickerTarget && (
+        <div className="modal-overlay" onClick={() => setConditionPickerTarget(null)}>
+          <div className="modal-card" style={{ maxWidth: '650px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-card-header">
+              <h2>
+                {conditionPickerTarget === 'condition' 
+                  ? t('tasks.configure_condition_title') 
+                  : t('tasks.configure_skip_condition_title')
+                }
+              </h2>
+              <button className="btn-close-modal" onClick={() => setConditionPickerTarget(null)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', maxHeight: '70vh', overflowY: 'auto' }}>
+              {/* Search Bar */}
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder={t('tasks.search_questions_placeholder')}
+                  value={conditionSearchQuery}
+                  onChange={(e) => setConditionSearchQuery(e.target.value)}
+                  style={{ paddingLeft: '32px' }}
+                />
+                <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: 'var(--text-sm)' }}>🔍</span>
+              </div>
+
+              {/* Reset to empty condition option */}
+              <button
+                type="button"
+                className="form-dropdown-option"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  borderRadius: '8px',
+                  border: '1px dashed var(--panel-border)',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  color: 'var(--text-main)',
+                  fontWeight: '600',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: 'var(--text-xs)'
+                }}
+                onClick={() => {
+                  handleConditionChange(conditionPickerTarget, 'question', '');
+                  setConditionPickerTarget(null);
+                }}
+              >
+                <span>✨ {conditionPickerTarget === 'condition' ? t('tasks.always_execute_desc') : t('tasks.never_skip_desc')}</span>
+              </button>
+
+              {/* Questions List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-xs)' }}>
+                {conditionSearchQuery !== '' ? (
+                  // Search view
+                  (() => {
+                    const query = conditionSearchQuery.toLowerCase().trim();
+                    const filtered = availableQuestions.filter(item => 
+                      item.question.label.toLowerCase().includes(query) ||
+                      item.formTitle.toLowerCase().includes(query) ||
+                      item.taskName.toLowerCase().includes(query)
+                    );
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)', fontStyle: 'italic' }}>
+                          {t('tasks.no_questions_matching')}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                        {filtered.map(item => (
+                          <div
+                            key={`search-${item.taskId}-${item.formId}-${item.question.id}`}
+                            className="form-summary-card"
+                            style={{
+                              padding: 'var(--spacing-md) var(--spacing-md)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 'var(--spacing-sm)'
+                            }}
+                            onClick={() => {
+                              handleConditionChange(conditionPickerTarget, 'question', `${item.taskId}|${item.formId}|${item.question.id}`);
+                              setConditionPickerTarget(null);
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', minWidth: 0, flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-xs)', fontSize: 'var(--text-xs)' }}>
+                                <span style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px var(--spacing-xs)', borderRadius: '4px', fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--primary)' }}>
+                                  {t('tasks.task_prefix')}{item.taskNumber}
+                                </span>
+                                <span style={{ color: 'var(--text-muted)' }}>{item.taskName}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                                <span style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px var(--spacing-xs)', borderRadius: '4px', fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--primary)' }}>
+                                  {t('tasks.form_prefix')}{item.formNumber}
+                                </span>
+                                <span style={{ color: 'var(--text-muted)' }}>{item.formTitle}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                          <span style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px var(--spacing-xs)', borderRadius: '4px', fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--primary)' }}>
+                                  {t('tasks.question_prefix')}{item.questionNumber}
+                                </span>
+                                <span style={{ fontSize: 'var(--text-sm)', fontWeight: '600', color: 'var(--text-main)', wordBreak: 'break-word' }}>
+                                  {item.question.label}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="option-badge" style={{ backgroundColor: 'var(--primary)', color: '#fff', fontSize: 'var(--text-xs)', padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: '4px', flexShrink: 0 }}>
+                              {t('tasks.select_question_btn')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()
+                ) : (
+                  // Tree view (folders for tasks and forms)
+                  groupedQuestions.length === 0 ? (
+                    <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)', fontStyle: 'italic' }}>
+                      {t('tasks.no_questions_matching')}
+                    </div>
+                  ) : (
+                    groupedQuestions.map(tNode => (
+                      <div
+                        key={tNode.taskId}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.01)',
+                          border: '1px solid var(--panel-border)',
+                          borderRadius: '8px',
+                          padding: 'var(--spacing-md)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 'var(--spacing-sm)'
+                        }}
+                      >
+                        <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', fontSize: 'var(--text-sm)', color: 'var(--primary)' }}>
+                          <span style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px var(--spacing-xs)', borderRadius: '4px', fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>
+                            {t('tasks.task_prefix')}{tNode.taskNumber}
+                          </span>
+                          {tNode.taskName}
+                        </h4>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)', paddingLeft: 'var(--spacing-sm)' }}>
+                          {tNode.forms.map(fNode => (
+                            <div
+                              key={fNode.formId}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.01)',
+                                borderLeft: '3px solid rgba(59, 130, 246, 0.3)',
+                                padding: 'var(--spacing-sm) var(--spacing-sm)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 'var(--spacing-sm)'
+                              }}
+                            >
+                              <strong style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', fontSize: 'var(--text-xs)', color: 'var(--primary)' }}>
+                                <span style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px var(--spacing-xs)', borderRadius: '4px', fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--primary)' }}>
+                                  {t('tasks.form_prefix')}{fNode.formNumber}
+                                </span>
+                                {fNode.formTitle}
+                              </strong>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                                {fNode.questions.map(qNode => {
+                                  const isSelected = (selectedTask && conditionPickerTarget) ? selectedTask[conditionPickerTarget]?.questionId === qNode.id : false;
+                                  return (
+                                    <div
+                                      key={qNode.id}
+                                      className={`form-dropdown-option ${isSelected ? 'linked' : ''}`}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: 'var(--spacing-sm) var(--spacing-sm)',
+                                        borderRadius: '6px',
+                                        border: isSelected ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
+                                        background: isSelected ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255, 255, 255, 0.01)',
+                                        cursor: 'pointer',
+                                        gap: 'var(--spacing-sm)'
+                                      }}
+                                      onClick={() => {
+                                        handleConditionChange(conditionPickerTarget, 'question', `${tNode.taskId}|${fNode.formId}|${qNode.id}`);
+                                        setConditionPickerTarget(null);
+                                      }}
+                                    >
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', flex: 1, minWidth: 0 }}>
+                                        <span style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px var(--spacing-xs)', borderRadius: '4px', fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--primary)' }}>
+                                          {t('tasks.question_prefix')}{qNode.questionNumber}
+                                        </span>
+                                        <span style={{ fontSize: 'var(--text-xs)', color: isSelected ? 'var(--primary)' : 'var(--text-main)', wordBreak: 'break-word', flex: 1 }}>
+                                          {qNode.label}
+                                        </span>
+                                      </div>
+                                      <span className="option-badge" style={{ fontSize: 'var(--text-xs)', flexShrink: 0, padding: '2px var(--spacing-sm)', borderRadius: '4px', background: isSelected ? 'var(--primary)' : 'var(--panel-border)', color: '#fff' }}>
+                                        {isSelected ? '✓' : t('tasks.select_question_btn')}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="modal-card-footer">
+              <button
+                type="button"
+                className="btn-modal-primary"
+                onClick={() => setConditionPickerTarget(null)}
+              >
+                {t('common.close')}
               </button>
             </div>
           </div>

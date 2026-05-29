@@ -34,7 +34,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
         >
           {taskName}
         </div>
-        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 'var(--spacing-xs)', alignItems: 'center' }}>
           {Boolean(data.condition) && (
             <span 
               className="node-badge badge-condition" 
@@ -106,8 +106,8 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
       
       <div className="node-body">
         {formTitles && formTitles.length > 0 ? (
-          <div className="node-detail" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="node-detail" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--spacing-xs)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
               <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}>
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -119,9 +119,9 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
               <span className="node-text" style={{ fontWeight: '600' }}>{t('forms.title')} ({formTitles.length})</span>
             </div>
             {formTitles.map((title, index) => (
-              <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '4px', width: '100%' }}>
-                <span style={{ fontSize: '9px', backgroundColor: 'var(--panel-border)', padding: '1px 5px', borderRadius: '10px', color: 'var(--text-main)', fontWeight: 'bold' }}>{index + 1}</span>
-                <span className="node-text" style={{ fontSize: '10px', opacity: 0.9 }} title={title}>{title}</span>
+              <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', paddingLeft: 'var(--spacing-xs)', width: '100%' }}>
+                <span style={{ fontSize: '9px', backgroundColor: 'var(--panel-border)', padding: '1px var(--spacing-xs)', borderRadius: '10px', color: 'var(--text-main)', fontWeight: 'bold' }}>{index + 1}</span>
+                <span className="node-text" style={{ fontSize: 'var(--text-xs)', opacity: 0.9 }} title={title}>{title}</span>
               </div>
             ))}
           </div>
@@ -152,24 +152,24 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
             </div>
           )
         ) : taskType === 'dynamic' ? (
-          <div className="node-detail font-bold" style={{ backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '6px', padding: '4px 8px' }}>
+          <div className="node-detail font-bold" style={{ backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '6px', padding: 'var(--spacing-xs) var(--spacing-sm)' }}>
             <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#3b82f6' }}>
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
               </svg>
             </span>
-            <span className="node-text" style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '11px' }}>
+            <span className="node-text" style={{ color: 'var(--primary)', fontWeight: '700', fontSize: 'var(--text-xs)' }}>
               {t('tasks.task_type_dynamic').split('—')[0].trim()}
             </span>
           </div>
         ) : (
-          <div className="node-detail font-bold" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '6px', padding: '4px 8px' }}>
+          <div className="node-detail font-bold" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '6px', padding: 'var(--spacing-xs) var(--spacing-sm)' }}>
             <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#10b981' }}>
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="currentColor" />
               </svg>
             </span>
-            <span className="node-text" style={{ color: '#10b981', fontWeight: '700', fontSize: '11px' }}>
+            <span className="node-text" style={{ color: '#10b981', fontWeight: '700', fontSize: 'var(--text-xs)' }}>
               {t('tasks.task_type_iso').split('—')[0].trim()}
             </span>
           </div>

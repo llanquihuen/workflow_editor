@@ -55,43 +55,43 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({ is
       <div className="modal-glass-card" style={{ maxWidth: '520px', animation: 'fadeIn 0.25s ease-out' }} onClick={(e) => e.stopPropagation()}>
         
         {/* Header styling matching the App's glass modal */}
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
           ⚙️ {t('dashboard.workflow_settings')}
         </h3>
-        <p style={{ marginBottom: '24px' }}>
+        <p style={{ marginBottom: 'var(--spacing-xl)' }}>
           {t('dashboard.workflow_settings_desc') || 'Configura la gobernanza y asignación de responsabilidad de este flujo de trabajo.'}
         </p>
 
         <form onSubmit={handleSave}>
           
           {/* Version Governance Block */}
-          <div className="form-group-modal" style={{ marginBottom: '20px' }}>
+          <div className="form-group-modal" style={{ marginBottom: 'var(--spacing-xl)' }}>
             <label>{t('common.save_version_governance') || 'Gobernanza de Versión y Metadata'}</label>
             <div className="settings-metadata-box" style={{
               background: 'rgba(99, 102, 241, 0.05)',
               border: '1px solid rgba(99, 102, 241, 0.15)',
               borderRadius: '6px',
-              padding: '14px 16px',
-              marginTop: '6px',
+              padding: 'var(--spacing-md) var(--spacing-lg)',
+              marginTop: 'var(--spacing-xs)',
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: '14px'
+              gap: 'var(--spacing-md)'
             }}>
               <div>
-                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>{t('dashboard.col_id') || 'ID del Workflow'}</span>
-                <strong style={{ fontSize: '13px', color: 'var(--text-main)', wordBreak: 'break-all' }}>{workflow.id}</strong>
+                <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: '2px' }}>{t('dashboard.col_id') || 'ID del Workflow'}</span>
+                <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-main)', wordBreak: 'break-all' }}>{workflow.id}</strong>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>{t('dashboard.col_version') || 'Versión Actual'}</span>
-                <strong style={{ fontSize: '15px', color: 'var(--primary)' }}>{workflow.version || 'v1.0'}</strong>
+                <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: '2px' }}>{t('dashboard.col_version') || 'Versión Actual'}</span>
+                <strong style={{ fontSize: 'var(--text-base)', color: 'var(--primary)' }}>{workflow.version || 'v1.0'}</strong>
               </div>
-              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '12px' }}>
-                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>{t('dashboard.workflow_settings_creation_date') || 'Fecha de Creación'}</span>
-                <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{workflow.creationDate || new Date().toLocaleDateString('en-US')}</strong>
+              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: 'var(--spacing-md)' }}>
+                <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: '2px' }}>{t('dashboard.workflow_settings_creation_date') || 'Fecha de Creación'}</span>
+                <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-main)' }}>{workflow.creationDate || new Date().toLocaleDateString('en-US')}</strong>
               </div>
-              <div style={{ textAlign: 'right', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '12px' }}>
-                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>{t('dashboard.workflow_settings_maker') || 'Operador Creador'}</span>
-                <strong style={{ fontSize: '13px', color: '#10b981' }}>{cleanUserName(workflow.makerId || 'admin')}</strong>
+              <div style={{ textAlign: 'right', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: 'var(--spacing-md)' }}>
+                <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: '2px' }}>{t('dashboard.workflow_settings_maker') || 'Operador Creador'}</span>
+                <strong style={{ fontSize: 'var(--text-sm)', color: '#10b981' }}>{cleanUserName(workflow.makerId || 'admin')}</strong>
               </div>
             </div>
           </div>
@@ -100,8 +100,8 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({ is
             <label>{t('dashboard.workflow_settings_owner') || 'Dueño del Flujo (Owner)'}</label>
             <select
               style={{
-                width: '100%', padding: '10px 12px', background: 'rgba(15, 23, 42, 0.5)', color: 'white', 
-                border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px', fontSize: '14px',
+                width: '100%', padding: 'var(--spacing-sm) var(--spacing-md)', background: 'rgba(15, 23, 42, 0.5)', color: 'white', 
+                border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px', fontSize: 'var(--text-sm)',
                 outline: 'none', transition: 'border-color 0.2s', cursor: 'pointer'
               }}
               value={ownerId}
@@ -123,8 +123,8 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({ is
             <label>{t('dashboard.workflow_settings_checker') || 'Verificador del Flujo (Checker)'}</label>
             <select
               style={{
-                width: '100%', padding: '10px 12px', background: 'rgba(15, 23, 42, 0.5)', color: 'white', 
-                border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px', fontSize: '14px',
+                width: '100%', padding: 'var(--spacing-sm) var(--spacing-md)', background: 'rgba(15, 23, 42, 0.5)', color: 'white', 
+                border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px', fontSize: 'var(--text-sm)',
                 outline: 'none', transition: 'border-color 0.2s', cursor: 'pointer'
               }}
               value={checkerId}

@@ -1,6 +1,7 @@
 export type QuestionType = 'text' | 'number' | 'dropdown' | 'checkbox' | 'radio' | 'textarea';
 
 export interface FormQuestionCondition {
+  formId?: string; // Opcional: si está presente, la pregunta origen pertenece a otro formulario en el workflow
   questionId: string;
   operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
   value: string;
@@ -14,6 +15,7 @@ export interface FormQuestion {
   isSensitive?: boolean; // Indica si la pregunta contiene información sensible
   options?: string[]; // Opciones para dropdown, radio, etc.
   condition?: FormQuestionCondition;
+  displayNumber?: string; // Persistent hierarchical question number (e.g. "2.1")
 }
 
 export interface Form {

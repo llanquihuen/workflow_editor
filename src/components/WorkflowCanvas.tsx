@@ -289,7 +289,7 @@ const WorkflowCanvasContent = () => {
           nodes: [{ id: selectedTaskId }],
           duration: 500,
           padding: 0.3,
-          maxZoom: 0.78
+          maxZoom: 0.85
         });
       }
     } else if (!selectedTaskId) {
@@ -338,7 +338,7 @@ const WorkflowCanvasContent = () => {
     <div className="panel-container canvas-panel" style={{ position: 'relative' }}>
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>{t('canvas.title')}</h3>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
           <button className="btn-premium-action" onClick={handleAddNewTask}>{t('tasks.add_task')}</button>
         </div>
       </div>

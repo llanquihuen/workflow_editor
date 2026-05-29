@@ -9,6 +9,7 @@
     "dev_view": "Dev"
   },
   "common": {
+    "confirm": "Confirm",
     "add": "Add",
     "delete": "Delete",
     "save": "Save",
@@ -78,6 +79,11 @@
     "delete_form_questions_confirm": "This form contains questions. Do you want to delete it?\n\"{{name}}\"",
     "delete_question_title": "Delete question",
     "delete_question_confirm": "This question contains information. Do you want to delete it?\n\"{{name}}\"",
+    "delete_question_warning_dependencies": "The following questions depend on this answer. Their visibility conditions will be removed and you will have to recreate them:",
+    "cannot_delete_linked_option_title": "Linked Option",
+    "cannot_delete_linked_option_desc": "Option \"{{name}}\" cannot be deleted because it is being used as a visibility condition in another question. Unlink the condition first.",
+    "cannot_modify_linked_options_title": "Linked Options in Use",
+    "cannot_modify_linked_options_desc": "The following options cannot be deleted or modified because they are linked as conditions: {{name}}. Unlink the corresponding conditions first.",
     "type": "Type:",
     "types": {
       "text": "Short text",
@@ -90,6 +96,8 @@
     "visibility": "Conditional Visibility",
     "always_visible": "-- Always visible --",
     "show_if": "Show if answers to: ",
+    "show_other_forms_options": "Show questions from other forms...",
+    "hide_other_forms_options": "Hide questions from other forms",
     "expected_value": "Expected value...",
     "field_options": "Field Options",
     "bulk_add": "Bulk Edit",
@@ -112,6 +120,12 @@
       "contains": "Contains",
       "greater_than": "Greater than (>)",
       "less_than": "Less than (<)"
+    },
+    "simulation": {
+      "title": "🔌 Simulation of External Responses",
+      "description": "This form has questions that depend on other forms. Modify these simulation responses to see changes in real time:",
+      "select_option": "-- Select option --",
+      "test_value_placeholder": "Write a test value..."
     }
   },
   "json": {
@@ -154,7 +168,7 @@
     "has_conditions_tooltip": "Has activation conditions",
     "no_conditions_tooltip": "No conditions (always executes)",
     "new_task": "New Task",
-    "add_task": "+ Add Task",
+    "add_task": "Add Task",
     "no_forms": "No forms",
     "no_approvers": "No approvers",
     "approver_count_one": "approver",
@@ -165,6 +179,9 @@
     "questions_count_label": "question",
     "questions_count_label_plural": "questions",
     "linked_forms_unlink_tooltip": "Unlink this form",
+    "unlink_form_title": "Unlink Form",
+    "unlink_form_confirm": "Are you sure you want to unlink the form \"{{name}}\"?",
+    "unlink_form_warning_dependencies": "The following tasks depend on this form. Their activation conditions will be removed and you will have to recreate them:",
     "link_forms_modal_title": "Link Forms to Task",
     "link_forms_button": "Link Forms",
     "available_forms_title": "Available Forms",
@@ -198,7 +215,23 @@
     "reminders_placeholder": "E.g., Daily, Every 3 days, etc. (empty to disable)",
     "other_participants_label": "Other Recipients (Comma separated)",
     "expiration_days_placeholder": "E.g., 5 (0 for unlimited)",
-    "other_participants_placeholder": "example1@bank.com, observer@bank.com"
+    "other_participants_placeholder": "example1@bank.com, observer@bank.com",
+    "validation_form_dep_not_assigned": "Requires \"{{depFormTitle}}\" (not assigned to workflow)",
+    "validation_form_dep_same_task_not_linked": "Requires \"{{depFormTitle}}\" (must be linked first in this task)",
+    "validation_form_dep_after": "Requires \"{{depFormTitle}}\" (assigned later in \"{{depTaskName}}\")",
+    "configure_condition_title": "Select Activation Question",
+    "configure_skip_condition_title": "Select Skip Question",
+    "search_questions_placeholder": "Search by question, form or task...",
+    "no_questions_matching": "No questions found matching your search.",
+    "always_execute_desc": "-- Always execute (No condition) --",
+    "never_skip_desc": "-- Never skip --",
+    "select_question_btn": "Select",
+    "selected_condition_breadcrumb": "Configured condition:",
+    "click_to_configure": "Configure Condition...",
+    "clear_condition_btn": "Clear Condition",
+    "task_prefix": "TASK ",
+    "form_prefix": "FORM ",
+    "question_prefix": "Q"
   },
   "dashboard": {
     "title": "Workflows",

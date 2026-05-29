@@ -124,7 +124,8 @@
           "id": "q-employee-traveler",
           "type": "text",
           "label": "Traveler Name",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-travel-type",
@@ -134,13 +135,15 @@
             "Domestic",
             "International"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-est-cost",
           "type": "number",
           "label": "Estimated Travel Budget (USD)",
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         },
         {
           "id": "q-family-travel",
@@ -150,7 +153,8 @@
             "Yes",
             "No"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "4"
         }
       ]
     },
@@ -163,14 +167,16 @@
           "id": "q-advance-amt",
           "type": "number",
           "label": "Requested Cash Advance Amount (USD)",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-passport-num",
           "type": "text",
           "label": "Passport Number",
           "required": true,
-          "isSensitive": true
+          "isSensitive": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-medical-insure",
@@ -180,7 +186,8 @@
             "Yes, issue new certificate",
             "No, I have active personal/global coverage"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         }
       ]
     },
@@ -193,7 +200,8 @@
           "id": "q-companion-name",
           "type": "text",
           "label": "Full Name of Companion(s)",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-companion-self-fund",
@@ -203,7 +211,8 @@
             "Yes, I confirm personal payment",
             "No, requesting corporate exception"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -216,7 +225,8 @@
           "id": "q-reason-high-budget",
           "type": "textarea",
           "label": "Business Justification for High Budget",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-cheaper-alternatives",
@@ -226,7 +236,8 @@
             "Yes, but they conflicted with critical business meetings",
             "No, high budget is required for client representation"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -239,13 +250,15 @@
           "id": "q-departure-date",
           "type": "text",
           "label": "Departure Date (YYYY-MM-DD)",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-preferred-airline",
           "type": "text",
           "label": "Preferred Airline / Flight Codes",
-          "required": false
+          "required": false,
+          "displayNumber": "2"
         },
         {
           "id": "q-room-type",
@@ -255,7 +268,8 @@
             "Standard Room (Corporate Rate)",
             "Executive Suite (VP level and above)"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         }
       ]
     }

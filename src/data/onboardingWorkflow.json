@@ -131,7 +131,8 @@
           "id": "q-fullname",
           "type": "text",
           "label": "Full Name",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-department",
@@ -143,7 +144,8 @@
             "Operations",
             "Marketing"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-role",
@@ -155,7 +157,8 @@
             "Operations Associate",
             "Marketing Specialist"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         },
         {
           "id": "q-remote",
@@ -165,7 +168,8 @@
             "Yes",
             "No"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "4"
         }
       ]
     },
@@ -178,13 +182,15 @@
           "id": "q-shipping-address",
           "type": "textarea",
           "label": "Home Delivery Address",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-shipping-phone",
           "type": "text",
           "label": "Contact Phone Number",
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-desk-needed",
@@ -194,7 +200,8 @@
             "Yes, full desk & chair bundle",
             "No, I have my own setup"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         }
       ]
     },
@@ -211,13 +218,15 @@
             "MacBook Pro 16\" (M3 Max, 64GB RAM)",
             "ThinkPad P16 (Intel i9, 64GB RAM, Linux)"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-github-handle",
           "type": "text",
           "label": "GitHub Username",
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-aws-access",
@@ -227,7 +236,8 @@
             "Yes, Full Admin Sandbox",
             "No, Read-Only Console"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         }
       ]
     },
@@ -244,13 +254,15 @@
             "Yes, fully signed",
             "No, pending signature"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-previous-firm",
           "type": "text",
           "label": "Please disclose any financial firms worked at in the last 12 months",
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -268,7 +280,8 @@
             "London Office - Floor 1",
             "Tokyo Hub - Floor 6"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-badge-photo",
@@ -278,7 +291,8 @@
             "Yes, uploaded to portal",
             "No, scheduled on first day"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     }

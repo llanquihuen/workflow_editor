@@ -216,7 +216,8 @@
           "id": "q-vendor-name",
           "type": "text",
           "label": "Legal Vendor Name",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-vendor-country",
@@ -227,7 +228,8 @@
             "European Union",
             "Rest of World"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-eu-vat-number",
@@ -238,13 +240,15 @@
             "questionId": "q-vendor-country",
             "operator": "equals",
             "value": "European Union"
-          }
+          },
+          "displayNumber": "2.1"
         },
         {
           "id": "q-annual-spend",
           "type": "number",
           "label": "Estimated Annual Contract Value (USD)",
-          "required": true
+          "required": true,
+          "displayNumber": "3"
         }
       ]
     },
@@ -262,7 +266,8 @@
             "Hardware Equipment",
             "Professional Services"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-warranty-period",
@@ -278,7 +283,8 @@
             "questionId": "q-purchase-category",
             "operator": "equals",
             "value": "Hardware Equipment"
-          }
+          },
+          "displayNumber": "1.1"
         },
         {
           "id": "q-marketing-access",
@@ -288,7 +294,8 @@
             "Yes",
             "No"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-brand-guidelines-url",
@@ -299,7 +306,8 @@
             "questionId": "q-marketing-access",
             "operator": "equals",
             "value": "Yes"
-          }
+          },
+          "displayNumber": "2.1"
         }
       ]
     },
@@ -317,7 +325,8 @@
             "On-Premises",
             "Hybrid"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-cloud-provider",
@@ -334,7 +343,8 @@
             "questionId": "q-hosting-type",
             "operator": "equals",
             "value": "Cloud (SaaS)"
-          }
+          },
+          "displayNumber": "1.1"
         },
         {
           "id": "q-handles-pii",
@@ -344,7 +354,8 @@
             "Yes",
             "No"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         },
         {
           "id": "q-pii-types",
@@ -360,7 +371,8 @@
             "questionId": "q-handles-pii",
             "operator": "equals",
             "value": "Yes"
-          }
+          },
+          "displayNumber": "2.1"
         }
       ]
     },
@@ -378,13 +390,15 @@
             "State of New York",
             "State of California"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-indemnity-limit",
           "type": "number",
           "label": "Limitation of Liability Limit (USD)",
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -401,7 +415,8 @@
             "Yes, DPA is fully executed",
             "No, pending legal finalization"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-encryption-transit",
@@ -411,7 +426,8 @@
             "Yes, TLS 1.3 and AES-256 implemented",
             "No, requires special security exception review"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -424,7 +440,8 @@
           "id": "q-qa-passed-percent",
           "type": "number",
           "label": "Staging Automation Suite Pass Rate (%)",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-browser-matrix",
@@ -434,7 +451,8 @@
             "Yes, full browser compatibility matrix passed",
             "No, pending legacy browser review"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -447,13 +465,15 @@
           "id": "q-soc2-date",
           "type": "text",
           "label": "Date of Latest SOC 2 Type II Report",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-soc2-exceptions",
           "type": "textarea",
           "label": "Describe any exceptions identified in the auditor's report",
-          "required": false
+          "required": false,
+          "displayNumber": "2"
         }
       ]
     },
@@ -466,7 +486,8 @@
           "id": "q-dnb-score",
           "type": "number",
           "label": "Dun & Bradstreet (D&B) Credit Score Rating (1-100)",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-funding-verif",
@@ -476,7 +497,8 @@
             "Yes, budget successfully reserved",
             "No, pending department transfer approvals"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -494,13 +516,15 @@
             "Europe West Hub (Frankfurt)",
             "Asia Pacific Hub (Singapore)"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-delivery-date-requested",
           "type": "text",
           "label": "Requested On-Site Delivery Date",
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -513,13 +537,15 @@
           "id": "q-pr-embargo",
           "type": "text",
           "label": "Public Relations Embargo Release Date (YYYY-MM-DD)",
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-campaign-name-label",
           "type": "text",
           "label": "Co-Branding Campaign Code Name",
-          "required": true
+          "required": true,
+          "displayNumber": "2"
         }
       ]
     },
@@ -537,13 +563,15 @@
             "Somewhat Satisfied (Requires custom configurations)",
             "Unsatisfied (Critical missing features)"
           ],
-          "required": true
+          "required": true,
+          "displayNumber": "1"
         },
         {
           "id": "q-trial-bugs",
           "type": "textarea",
           "label": "Report any bugs or integration obstacles observed",
-          "required": false
+          "required": false,
+          "displayNumber": "2"
         }
       ]
     }

@@ -59,7 +59,7 @@ export const JsonEditorView = () => {
   return (
     <div className="panel-container">
       <div className="panel-header">
-        <h3>{t('json.title')} {error && <span style={{color: '#ef4444', fontSize: '12px', marginLeft: '10px'}}>({t('common.saving')}... {error})</span>}</h3>
+        <h3>{t('json.title')} {error && <span style={{color: '#ef4444', fontSize: 'var(--text-xs)', marginLeft: 'var(--spacing-sm)'}}>({t('common.saving')}... {error})</span>}</h3>
       </div>
       {error && <div className="error-banner">{error}</div>}
       <div className="panel-content">
