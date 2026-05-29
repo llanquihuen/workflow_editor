@@ -1436,7 +1436,6 @@ body {
   width: 28px;
   height: 28px;
   display: flex;
-  align-items: center;
   justify-content: center;
   background-color: var(--panel-border);
   color: var(--text-muted);
