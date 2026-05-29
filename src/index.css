@@ -1415,9 +1415,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm);
+  gap: 10px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: var(--spacing-sm);
+  margin-top: 10px;
 }
 
 .btn-add-question:hover {
@@ -1441,7 +1441,7 @@ body {
   background-color: var(--panel-border);
   color: var(--text-muted);
   border-radius: 50%;
-  font-size: var(--text-xl);
+  font-size: 1.4rem;
   line-height: 1;
   transition: all 0.3s ease;
 }
