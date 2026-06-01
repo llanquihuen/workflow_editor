@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Editor from '@monaco-editor/react';
-import { useWorkflowStore, mapFrontendToApi, mapApiToFrontend } from '../store/useWorkflowStore';
+import { useWorkflowStore, mapFrontendToApi, mapApiToFrontend } from '../../store/useWorkflowStore';
 
-export const JsonEditorView = () => {
+export const JsonEditor = () => {
   const { t } = useTranslation();
   const { workflow, updateWorkflow, theme } = useWorkflowStore();
   const [jsonText, setJsonText] = useState('');

@@ -1,4 +1,4 @@
-import type { Workflow } from '../types/workflow.types';
+import type { Workflow } from '../../../types/workflow.types';
 
 export const detectWorkflowChanges = (
   original: Workflow | null,

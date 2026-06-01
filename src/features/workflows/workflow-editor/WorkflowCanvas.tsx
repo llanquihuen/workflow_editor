@@ -13,8 +13,8 @@ import type { Node, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
 import { useWorkflowStore } from '../store/useWorkflowStore';
-import { TaskNode } from './TaskNode';
-import { DUMMY_USERS } from '../utils/constants';
+import { TaskNode } from './components/TaskNode';
+import { DUMMY_USERS } from '../../../utils/constants';
 
 const nodeTypes = { customTask: TaskNode };
 

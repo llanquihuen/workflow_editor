@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
-import { JsonEditorView } from './components/JsonEditorView';
-import { WorkflowCanvas } from './components/WorkflowCanvas';
-import { TaskEditorView } from './components/TaskEditorView';
-import { FormLibraryView } from './components/FormLibraryView';
-import { WorkflowDashboardView } from './components/WorkflowDashboardView';
-import { useWorkflowStore } from './store/useWorkflowStore';
-import { detectWorkflowChanges } from './utils/changeDetector';
-import { WorkflowSettingsModal } from './components/WorkflowSettingsModal';
+import { JsonEditor } from './features/workflows/workflow-editor/json-editor/JsonEditor';
+import { WorkflowCanvas } from './features/workflows/workflow-editor/WorkflowCanvas';
+import { TaskEditor } from './features/workflows/workflow-editor/task-editor/TaskEditor';
+import { FormLibrary } from './features/workflows/workflow-editor/form-editor/FormLibrary';
+import { WorkflowList } from './features/workflows/workflow-list/WorkflowList';
+import { useWorkflowStore } from './features/workflows/store/useWorkflowStore';
+import { detectWorkflowChanges } from './features/workflows/utils/changeDetector';
+import { WorkflowSettingsModal } from './features/workflows/workflow-editor/components/WorkflowSettingsModal';
 import './App.css';
 
 function App() {
@@ -390,7 +390,7 @@ function App() {
         {/* Dynamic Inner Panel Body */}
         <div className="main-shell-content">
           {currentView === 'dashboard' ? (
-            <WorkflowDashboardView />
+            <WorkflowList />
           ) : (
             <div className="editor-workspace-container">
               {/* Secondary Submenu Bar for Editor Tabs */}
@@ -430,7 +430,7 @@ function App() {
                   {showJson && (
                     <>
                       <Panel defaultSize={25} minSize={15}>
-                        <JsonEditorView />
+                        <JsonEditor />
                       </Panel>
                       <ResizeHandle />
                     </>
@@ -475,7 +475,7 @@ function App() {
                   {currentView === 'flow' ? (
                     <>
                       <Panel defaultSize={45} minSize={30}>
-                        <TaskEditorView />
+                        <TaskEditor />
                       </Panel>
                       <ResizeHandle />
                       <Panel defaultSize={30} minSize={15}>
@@ -484,7 +484,7 @@ function App() {
                     </>
                   ) : (
                     <Panel defaultSize={showJson ? 75 : 100} minSize={50}>
-                      <FormLibraryView />
+                      <FormLibrary />
                     </Panel>
                   )}
                 </PanelGroup>
