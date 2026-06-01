@@ -1,6 +1,17 @@
 import { useTranslation } from 'react-i18next';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { useWorkflowStore } from '../store/useWorkflowStore';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
+import { 
+  IconCondition, 
+  IconSkip, 
+  IconUp, 
+  IconDown, 
+  IconDelete, 
+  IconForm, 
+  IconUsers, 
+  IconDynamic, 
+  IconISO 
+} from '../../../../components/ui/Icons';
 
 export const TaskNode = ({ id, data, selected }: NodeProps) => {
   const { t } = useTranslation();
@@ -41,13 +52,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
               title={t('tasks.activation_condition')}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fbbf24', color: '#8b4f06', padding: 0 }}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="16 3 21 3 21 8" />
-                <line x1="4" y1="20" x2="21" y2="3" />
-                <polyline points="21 16 21 21 16 21" />
-                <line x1="15" y1="15" x2="21" y2="21" />
-                <line x1="4" y1="4" x2="9" y2="9" />
-              </svg>
+              <IconCondition size={11} />
             </span>
           )}
           {Boolean(data.skipCondition) && (
@@ -56,10 +61,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
               title={t('tasks.skip_condition')}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f59e0b', color: '#ffffff', padding: 0 }}
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="5 4 15 12 5 20 5 4" fill="currentColor" />
-                <line x1="19" y1="5" x2="19" y2="19" />
-              </svg>
+              <IconSkip size={10} />
             </span>
           )}
           <div className="node-controls" style={{ padding: 0, border: 'none', background: 'transparent' }}>
@@ -70,9 +72,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
               title={t('common.up')}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="18 15 12 9 6 15" />
-              </svg>
+              <IconUp size={10} />
             </button>
             <button 
               className="node-btn" 
@@ -81,9 +81,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
               title={t('common.down')}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+              <IconDown size={10} />
             </button>
             <button 
               className="node-btn delete" 
@@ -95,10 +93,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
               title={t('common.delete')}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
+              <IconDelete size={10} />
             </button>
           </div>
         </div>
@@ -109,12 +104,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
           <div className="node-detail" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--spacing-xs)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
               <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}>
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
+                <IconForm size={12} style={{ color: 'var(--primary)' }} />
               </span>
               <span className="node-text" style={{ fontWeight: '600' }}>{t('forms.title')} ({formTitles.length})</span>
             </div>
@@ -135,12 +125,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
           approversList && approversList.length > 0 ? (
             <div className="node-detail">
               <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}>
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
+                <IconUsers size={12} style={{ color: 'var(--primary)' }} />
               </span>
               <span className="node-text" title={approversList.join(', ')}>
                 {approversList.length} {t('tasks.approver_count', { count: approversList.length })}
@@ -154,9 +139,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
         ) : taskType === 'dynamic' ? (
           <div className="node-detail font-bold" style={{ backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '6px', padding: 'var(--spacing-xs) var(--spacing-sm)' }}>
             <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#3b82f6' }}>
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
-              </svg>
+              <IconDynamic size={12} style={{ color: '#3b82f6' }} />
             </span>
             <span className="node-text" style={{ color: 'var(--primary)', fontWeight: '700', fontSize: 'var(--text-xs)' }}>
               {t('tasks.task_type_dynamic').split('—')[0].trim()}
@@ -165,9 +148,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
         ) : (
           <div className="node-detail font-bold" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '6px', padding: 'var(--spacing-xs) var(--spacing-sm)' }}>
             <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#10b981' }}>
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="currentColor" />
-              </svg>
+              <IconISO size={12} style={{ color: '#10b981' }} />
             </span>
             <span className="node-text" style={{ color: '#10b981', fontWeight: '700', fontSize: 'var(--text-xs)' }}>
               {t('tasks.task_type_iso').split('—')[0].trim()}
@@ -175,8 +156,6 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
       </div>
-
-
 
       <Handle type="source" position={Position.Bottom} className="node-handle" />
     </div>

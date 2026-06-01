@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useWorkflowStore } from '../store/useWorkflowStore';
-import { DUMMY_USERS } from '../utils/constants';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
+import { DUMMY_USERS } from '../../../../utils/constants';
 
 interface WorkflowSettingsModalProps {
   isOpen: boolean;
@@ -16,14 +16,16 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({ is
   const [checkerId, setCheckerId] = useState('');
   const [ownerName, setOwnerName] = useState('');
 
-  // Sync state when workflow or modal opens
-  useEffect(() => {
-    if (workflow) {
-      setOwnerId(workflow.ownerId || '');
-      setCheckerId(workflow.checkerId || '');
-      setOwnerName(workflow.ownerName || '');
-    }
-  }, [workflow, isOpen]);
+  const [prevWorkflowId, setPrevWorkflowId] = useState<string | null>(null);
+  const [prevIsOpen, setPrevIsOpen] = useState(false);
+
+  if (workflow && (workflow.id !== prevWorkflowId || isOpen !== prevIsOpen)) {
+    setPrevWorkflowId(workflow.id);
+    setPrevIsOpen(isOpen);
+    setOwnerId(workflow.ownerId || '');
+    setCheckerId(workflow.checkerId || '');
+    setOwnerName(workflow.ownerName || '');
+  }
 
   if (!isOpen || !workflow) return null;
 

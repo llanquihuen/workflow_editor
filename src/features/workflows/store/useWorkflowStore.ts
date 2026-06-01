@@ -1,13 +1,13 @@
 import { create } from 'zustand';
-import type { Workflow, Task, Form } from '../types/workflow.types';
-import i18n from '../i18n';
-import { api, getAuthToken, getAuthUsername, removeAuthToken } from '../utils/api';
+import type { Workflow, Task, Form } from '../../../types/workflow.types';
+import i18n from '../../../i18n';
+import { api, getAuthToken, getAuthUsername, removeAuthToken } from '../../../utils/api';
 
-import procurementWorkflowData from '../data/procurementWorkflow.json';
-import onboardingWorkflowData from '../data/onboardingWorkflow.json';
-import deploymentWorkflowData from '../data/deploymentWorkflow.json';
-import expenseWorkflowData from '../data/expenseWorkflow.json';
-import initialWorkflowData from '../data/initialWorkflow.json';
+import procurementWorkflowData from '../../../data/procurementWorkflow.json';
+import onboardingWorkflowData from '../../../data/onboardingWorkflow.json';
+import deploymentWorkflowData from '../../../data/deploymentWorkflow.json';
+import expenseWorkflowData from '../../../data/expenseWorkflow.json';
+import initialWorkflowData from '../../../data/initialWorkflow.json';
 
 type ViewMode = 'dashboard' | 'flow' | 'forms';
 

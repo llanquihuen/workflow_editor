@@ -1,4 +1,5 @@
-import type { FormQuestion } from '../types/workflow.types';
+import type { FormQuestion } from '../../../../../types/workflow.types';
+import { IconLink, IconLock, IconDelete } from '../../../../../components/ui/Icons';
 
 interface CollapsedQuestionItemProps {
   question: FormQuestion;
@@ -47,18 +48,12 @@ export const CollapsedQuestionItem = ({
           {question.required && <span title={requiredLabel} style={{ fontSize: 'var(--text-md)', color: '#ef4444', fontWeight: 700 }}>*</span>}
           {question.condition && (
             <span title={conditionalLabel} style={{ display: 'inline-flex', alignItems: 'center', color: '#fbbf24' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
+              <IconLink size={12} />
             </span>
           )}
           {question.isSensitive && (
             <span title={sensitiveLabel} style={{ display: 'inline-flex', alignItems: 'center', color: '#a78bfa' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
+              <IconLock size={12} />
             </span>
           )}
         </div>
@@ -121,10 +116,7 @@ export const CollapsedQuestionItem = ({
           onClick={onDelete}
           style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
+          <IconDelete size={12} />
         </button>
 
       </div>
