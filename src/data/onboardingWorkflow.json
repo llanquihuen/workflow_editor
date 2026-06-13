@@ -4,14 +4,13 @@
   "tasks": [
     {
       "id": "task-1",
-      "name": "General Employee Information",
+      "name": "Request Submit",
       "order": 1,
+      "taskType": "system",
       "formIds": [
         "form-employee-info"
       ],
-      "approverIds": [
-        "usr-3"
-      ],
+      "approverIds": [],
       "ui_metadata": {
         "x": 250,
         "y": 50

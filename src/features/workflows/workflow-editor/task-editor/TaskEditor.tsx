@@ -1,41 +1,131 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
 import type { FormQuestion, TaskCondition, Task, NotificationSettings } from '../../../../types/workflow.types';
-import { IconCondition, IconSkip, IconDelete } from '../../../../components/ui/Icons';
+import { IconCondition, IconSkip, IconDelete, IconLock } from '../../../../components/ui/Icons';
 import { ApproversTab } from './components/ApproversTab';
 import { FormsTab } from './components/FormsTab';
 import './TaskEditor.css';
+const isValidMove = (tasks: Task[], fromIndex: number, toIndex: number): boolean => {
+  if (fromIndex === 0 || toIndex === 0) return false;
+  if (fromIndex < 0 || fromIndex >= tasks.length || toIndex < 0 || toIndex >= tasks.length) return false;
+
+  const proposed = [...tasks];
+  const [movedTask] = proposed.splice(fromIndex, 1);
+  proposed.splice(toIndex, 0, movedTask);
+
+  for (let i = 0; i < proposed.length; i++) {
+    const task = proposed[i];
+    
+    // Check activation condition dependency
+    if (task.condition?.dependentTaskId) {
+      const depIdx = proposed.findIndex(t => t.id === task.condition?.dependentTaskId);
+      if (depIdx === -1 || i <= depIdx) {
+        return false;
+      }
+    }
+    
+    // Check skip condition dependency
+    if (task.skipCondition?.dependentTaskId) {
+      const depIdx = proposed.findIndex(t => t.id === task.skipCondition?.dependentTaskId);
+      if (depIdx === -1 || i <= depIdx) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
 
 export const TaskEditor = () => {
   const { t } = useTranslation();
-  const { workflow, selectedTaskId, setSelectedTask, updateTask, deleteTask, reorderTask, addTask } = useWorkflowStore();
+  const { workflow, selectedTaskId, setSelectedTask, updateTask, deleteTask, reorderTask, addTask, updateWorkflow } = useWorkflowStore();
   const [editingName, setEditingName] = useState<Record<string, string>>({});
 
-  const [showTaskDropdown, setShowTaskDropdown] = useState(false);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [conditionPickerTarget, setConditionPickerTarget] = useState<'condition' | 'skipCondition' | null>(null);
   const [conditionSearchQuery, setConditionSearchQuery] = useState('');
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.custom-dropdown-container')) {
-        setShowTaskDropdown(false);
-      }
-    };
+  const performReorder = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === 0 || toIndex === 0 || fromIndex === toIndex) return;
+    if (!isValidMove(workflow.tasks, fromIndex, toIndex)) return;
 
-    if (showTaskDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
+    const reorderedTasks = [...workflow.tasks];
+    const [draggedTask] = reorderedTasks.splice(fromIndex, 1);
+    reorderedTasks.splice(toIndex, 0, draggedTask);
+
+    const updatedTasks = reorderedTasks.map((t, idx) => ({
+      ...t,
+      order: idx + 1,
+      ui_metadata: {
+        x: 250,
+        y: idx * 150 + 50,
+      },
+    }));
+
+    updateWorkflow({
+      ...workflow,
+      tasks: updatedTasks,
+    });
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (index === 0) {
+      e.preventDefault();
+      return;
     }
+    setDraggingIndex(index);
+    setHoverIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showTaskDropdown]);
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    if (draggingIndex === null || index === 0) return;
+    if (isValidMove(workflow.tasks, draggingIndex, index)) {
+      e.preventDefault();
+      if (hoverIndex !== index) {
+        setHoverIndex(index);
+      }
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggingIndex(null);
+    setHoverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const dragIdx = draggingIndex;
+    setDraggingIndex(null);
+    setHoverIndex(null);
+    
+    if (dragIdx !== null) {
+      performReorder(dragIdx, dropIndex);
+    }
+  };
+
+  const handleContainerDragOver = (e: React.DragEvent) => {
+    if (draggingIndex === null || hoverIndex === null) return;
+    if (isValidMove(workflow.tasks, draggingIndex, hoverIndex)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleContainerDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const dragIdx = draggingIndex;
+    const hoverIdx = hoverIndex;
+    setDraggingIndex(null);
+    setHoverIndex(null);
+    
+    if (dragIdx !== null && hoverIdx !== null) {
+      performReorder(dragIdx, hoverIdx);
+    }
+  };
 
   const selectedTask = workflow.tasks.find((t) => t.id === selectedTaskId);
   const selectedIndex = workflow.tasks.findIndex((t) => t.id === selectedTaskId);
@@ -144,10 +234,6 @@ export const TaskEditor = () => {
     updateTask(selectedTask.id, { [conditionType]: currentCondition });
   };
 
-  const handleTaskChange = (taskId: string) => {
-    setSelectedTask(taskId === '' ? null : taskId);
-    setShowTaskDropdown(false);
-  };
 
   const isDuplicateTaskName = (name: string, taskId?: string) => {
     return workflow.tasks.some(t => t.id !== taskId && t.name.toLowerCase() === name.toLowerCase().trim());
@@ -247,106 +333,228 @@ export const TaskEditor = () => {
   return (
     <div className="panel-container form-panel">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-          <h3 style={{ margin: 0 }}>{t('tasks.editor_title')}</h3>
-          {selectedTask && showStickyHeader && (
-            <div 
-              className="sticky-task-indicator"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-xs)',
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
-                color: 'var(--primary)',
-                padding: 'var(--spacing-xs) var(--spacing-sm)',
-                borderRadius: '16px',
-                fontSize: 'var(--text-xs)',
-                fontWeight: '600',
-                animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)',
-                marginLeft: 'var(--spacing-sm)'
-              }}
+        <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 'var(--text-md)', letterSpacing: '0.05em', fontWeight: '700' }}>
+          {t('tasks.select_step')}
+        </h3>
+        {showStickyHeader && selectedTask && (
+            <div
+                className="sticky-task-indicator"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-xs)',
+                  color: '#ffffff',
+                  borderRadius: '10px',
+                  borderColor: 'var(--primary)',
+                  fontSize: 'var(--text-md)',
+                  fontWeight: '600',
+                  animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  marginRight: 'auto',
+                  marginLeft: 'var(--spacing-md)',
+                }}
             >
-              <span style={{ 
-                background: 'var(--primary)', 
-                color: 'white', 
-                borderRadius: '50%', 
-                width: '18px', 
-                height: '18px', 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                fontSize: 'var(--text-xs)',
-                fontWeight: 'bold'
+                  <span style={{
+                    background: 'var(--primary)',
+                    color: 'var(--primary-light)',
+                    borderRadius: '50%',
+                    width: '18px',
+                    height: '18px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 'var(--text-xs)',
+                    fontWeight: 'bold'
+                  }}>
+                    {selectedTask.order}
+                  </span>
+              <span style={{
+                maxWidth: '320px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                color: 'var(--text-main)',
               }}>
-                {selectedTask.order}
-              </span>
-              <span style={{ 
-                maxWidth: '200px',
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis', 
-                whiteSpace: 'nowrap' 
-              }}>
-                {selectedTask.name}
-              </span>
+                    {selectedTask.name}
+                  </span>
             </div>
-          )}
-        </div>
-        <button className="btn-premium-action" onClick={handleAddNewTask}>{t('tasks.add_task')}</button>
+        )}
       </div>
 
       <div 
         className="panel-content padded-content"
         onScroll={(e) => {
           const scrollTop = e.currentTarget.scrollTop;
-          if (scrollTop > 80) {
+          if (scrollTop > 363) {
             if (!showStickyHeader) setShowStickyHeader(true);
           } else if (showStickyHeader) setShowStickyHeader(false);
         }}
       >
-        <div className="task-selector">
-          <label>{t('tasks.select_task')}</label>
-          <div className="custom-dropdown-container">
-            <button 
-              className={`custom-dropdown-trigger ${!selectedTask ? 'placeholder' : ''}`}
-              onClick={() => setShowTaskDropdown(!showTaskDropdown)}
-            >
-              <div className="trigger-content">
-                {selectedTask ? (
-                  <>
-                    <span className="task-order-badge">{selectedTask.order}</span>
-                    <span className="task-name-text">{selectedTask.name}</span>
-                  </>
-                ) : (
-                  <span className="placeholder-text">{t('tasks.select_task_placeholder')}</span>
+        <div 
+          className="step-list-container"
+          onDragOver={handleContainerDragOver}
+          onDrop={handleContainerDrop}
+        >
+          {workflow.tasks.map((task, idx) => {
+            const isSelected = selectedTaskId === task.id;
+            const numApprovers = (task.approverIds || []).length;
+            const numForms = (task.formIds || []).length;
+            const numConditions = (task.condition ? 1 : 0) + (task.skipCondition ? 1 : 0);
+            
+            // Build details string
+            const detailsParts: string[] = [];
+            
+            // Step type name
+            let typeLabel = '';
+            if (task.taskType === 'system') {
+              typeLabel = t('tasks.task_type_system').split('—')[0].trim();
+            } else if (task.taskType === 'dynamic') {
+              typeLabel = t('tasks.task_type_dynamic').split('—')[0].trim();
+            } else if (task.taskType === 'iso') {
+              typeLabel = t('tasks.task_type_iso').split('—')[0].trim();
+            } else {
+              typeLabel = t('tasks.task_type_normal').split('—')[0].trim();
+            }
+            detailsParts.push(typeLabel);
+            
+            // Approver count (if normal type)
+            if (!task.taskType || task.taskType === 'normal') {
+              const appLabel = numApprovers === 1 ? t('tasks.approver_count_one') : t('tasks.approver_count_other');
+              detailsParts.push(`${numApprovers} ${appLabel}`);
+            }
+            
+            // Form count
+            const formLabel = numForms === 1 ? t('tasks.form_count_one') : t('tasks.form_count_other');
+            detailsParts.push(`${numForms} ${formLabel}`);
+            
+            // Condition count
+            if (numConditions > 0) {
+              const condLabel = numConditions === 1 ? t('tasks.condition_count_one') : t('tasks.condition_count_other');
+              detailsParts.push(`${numConditions} ${condLabel}`);
+            }
+            
+            const detailsStr = detailsParts.join(' · ');
+            
+            // Check manual mover buttons availability
+            const canMoveUp = idx > 1 && isValidMove(workflow.tasks, idx, idx - 1);
+            const canMoveDown = idx > 0 && idx < workflow.tasks.length - 1 && isValidMove(workflow.tasks, idx, idx + 1);
+
+            // Calculate CSS transforms for drag displacement animations
+            let transformStyle: React.CSSProperties | undefined = undefined;
+            if (draggingIndex !== null && hoverIndex !== null && draggingIndex !== hoverIndex) {
+              if (idx !== draggingIndex) {
+                if (hoverIndex > draggingIndex) {
+                  if (idx > draggingIndex && idx <= hoverIndex) {
+                    transformStyle = { transform: 'translateY(-58px)' };
+                  }
+                } else if (hoverIndex < draggingIndex) {
+                  if (idx >= hoverIndex && idx < draggingIndex) {
+                    transformStyle = { transform: 'translateY(58px)' };
+                  }
+                }
+              }
+            }
+
+            return (
+              <div 
+                key={task.id}
+                className={`step-list-item ${isSelected ? 'selected' : ''} ${draggingIndex === idx ? 'dragging' : ''}`}
+                style={transformStyle}
+                draggable={idx > 0}
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                onClick={() => setSelectedTask(task.id)}
+              >
+                <div className="step-drag-handle">
+                  {idx > 0 ? (
+                    <svg width="12" height="18" viewBox="0 0 12 18" fill="currentColor">
+                      <circle cx="3" cy="3" r="1.5" />
+                      <circle cx="3" cy="9" r="1.5" />
+                      <circle cx="3" cy="15" r="1.5" />
+                      <circle cx="9" cy="3" r="1.5" />
+                      <circle cx="9" cy="9" r="1.5" />
+                      <circle cx="9" cy="15" r="1.5" />
+                    </svg>
+                  ) : (
+                    <svg width="12" height="18" viewBox="0 0 12 18" fill="currentColor" style={{ opacity: 0.15 }}>
+                      <circle cx="3" cy="3" r="1.5" />
+                      <circle cx="3" cy="9" r="1.5" />
+                      <circle cx="3" cy="15" r="1.5" />
+                      <circle cx="9" cy="3" r="1.5" />
+                      <circle cx="9" cy="9" r="1.5" />
+                      <circle cx="9" cy="15" r="1.5" />
+                    </svg>
+                  )}
+                </div>
+                
+                <div className="step-number-circle">
+                  {task.order}
+                </div>
+                
+                <div className="step-content-info">
+                  <div className="step-name">{task.name}</div>
+                  <div className="step-details">{detailsStr}</div>
+                </div>
+                
+                {task.taskType === 'system' ? (
+                  <div className="step-system-badge" style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-xs)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: 'var(--text-muted)',
+                    padding: '2px var(--spacing-sm)',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    marginRight: 'var(--spacing-xs)',
+                    alignSelf: 'center'
+                  }}>
+                    <IconLock size={10} style={{ color: 'var(--text-muted)' }} />
+                    <span>{t('tasks.system_step_badge')}</span>
+                  </div>
+                ) : isSelected && (
+                  <div className="step-actions-container" onClick={(e) => e.stopPropagation()}>
+                    <div className="step-mover-buttons">
+                      <button 
+                        className="mover-btn up" 
+                        disabled={!canMoveUp}
+                        onClick={() => reorderTask(task.id, 'up')}
+                        title={t('common.up')}
+                      >
+                        ▲
+                      </button>
+                      <button 
+                        className="mover-btn down" 
+                        disabled={!canMoveDown}
+                        onClick={() => reorderTask(task.id, 'down')}
+                        title={t('common.down')}
+                      >
+                        ▼
+                      </button>
+                    </div>
+                    <div className="step-actions-divider" />
+                    <button 
+                      className="step-delete-btn" 
+                      disabled={idx === 0}
+                      onClick={handleDeleteTask}
+                      title={t('tasks.delete_task')}
+                    >
+                      <IconDelete size={13} />
+                    </button>
+                  </div>
                 )}
               </div>
-              <span className={`dropdown-arrow ${showTaskDropdown ? 'open' : ''}`}>▼</span>
-            </button>
+            );
+          })}
 
-            {showTaskDropdown && (
-              <div className="custom-dropdown-menu">
-                <div 
-                  className={`dropdown-item ${!selectedTaskId ? 'selected' : ''}`}
-                  onClick={() => handleTaskChange('')}
-                >
-                  <span className="placeholder-text">{t('tasks.select_task_placeholder')}</span>
-                </div>
-                {workflow.tasks.map(t => (
-                  <div 
-                    key={t.id} 
-                    className={`dropdown-item ${selectedTaskId === t.id ? 'selected' : ''}`}
-                    onClick={() => handleTaskChange(t.id)}
-                  >
-                    <span className="task-order-badge">{t.order}</span>
-                    <span className="task-name-text">{t.name}</span>
-                    {selectedTaskId === t.id && <span className="selected-check">✓</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Add Step Button styled like Add Question */}
+          <button className="btn-add-question btn-add-step-list" onClick={handleAddNewTask}>
+            <span className="add-icon">+</span>
+            <span>{t('tasks.add_step')}</span>
+          </button>
         </div>
 
         {!selectedTask ? (
@@ -354,190 +562,156 @@ export const TaskEditor = () => {
             <p>{t('tasks.empty_state')}</p>
           </div>
         ) : (
-          <div className="editor-form">
+          <div className="editor-form-wrapper" style={{ marginTop: 'var(--spacing-lg)' }}>
+            <div className="selected-step-header-banner" style={{ justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span className="banner-order-circle">{selectedTask.order}</span>
+                <span className="banner-step-name">{selectedTask.name}</span>
+              </div>
+              {selectedTask.taskType === 'system' && (
+                <div className="banner-system-badge" style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-xs)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  color: '#ffffff',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: '600',
+                  marginRight: 'var(--spacing-sm)'
+                }}>
+                  <IconLock size={12} style={{ color: '#ffffff' }} />
+                  <span>{t('tasks.system_step_badge')}</span>
+                </div>
+              )}
+            </div>
 
-            <div className="editor-section">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
-                <h4 style={{ margin: 0 }}>{t('tasks.basic_config')}</h4>
+            {selectedTask.taskType === 'system' && (
+              <div className="system-step-info-box" style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'var(--spacing-md)',
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--panel-border)',
+                borderRadius: '8px',
+                padding: 'var(--spacing-md)',
+                marginBottom: 'var(--spacing-sm)',
+                color: 'var(--text-muted)',
+                fontSize: 'var(--text-sm)',
+                lineHeight: '1.5'
+              }}>
+                <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', height: '20px' }}>
+                  <IconLock size={16} />
+                </div>
+                <div>
+                  {t('tasks.system_step_info')}
+                </div>
+              </div>
+            )}
 
+            <div className="editor-form">
+              <div className="editor-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
+                  <h4 style={{ margin: 0 }}>{t('tasks.basic_config')}</h4>
 
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                  {/* Indicador de Condiciones */}
-                  {selectedTask.condition ? (
-                      <div title={t('tasks.has_conditions_tooltip', { defaultValue: 'Tiene condiciones de activación' })} style={{
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                    {/* Indicador de Condiciones */}
+                    {selectedTask.condition && (
+                        <div title={t('tasks.has_conditions_tooltip', { defaultValue: 'Tiene condiciones de activación' })} style={{
+                          display: 'flex',
+                          backgroundColor: 'rgba(251, 191, 36, 0.15)',
+                          border: '1px solid rgba(251, 191, 36, 0.3)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#b45309',
+                          padding: 'var(--spacing-xs)',
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          cursor: 'help'
+                        }}>
+                          <IconCondition size={12} />
+                        </div>
+                    )}
+                    {/* Indicador de Skip */}
+                    {selectedTask.skipCondition && (
+                      <div title={t('tasks.skip_condition')} style={{
+                        backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                        borderRadius: '50%',
                         display: 'flex',
-                        backgroundColor: 'rgba(251, 191, 36, 0.15)',
-                        border: '1px solid rgba(251, 191, 36, 0.3)',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#b45309',
+                        color: '#d97706',
                         padding: 'var(--spacing-xs)',
                         width: '24px',
                         height: '24px',
-                        borderRadius: '50%',
                         cursor: 'help'
                       }}>
-                        <IconCondition size={12} />
+                        <IconSkip size={11} />
                       </div>
-                  ) : (
-                      <div></div>
-                  )}
-                  {/* Indicador de Skip */}
-                  {selectedTask.skipCondition ? (
-                    <div title={t('tasks.skip_condition')} style={{
-                      backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                      border: '1px solid rgba(245, 158, 11, 0.3)',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#d97706',
-                      padding: 'var(--spacing-xs)',
-                      width: '24px',
-                      height: '24px',
-                      cursor: 'help'
-                    }}>
-                      <IconSkip size={11} />
-                    </div>
-                  ) : (
-                    <div></div>
-                  )}
-                  {/* Control del Orden del Paso */}
-                  <div className="step-order-badge" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-sm)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                    border: '1px solid rgba(59, 130, 246, 0.15)',
-                    padding: 'var(--spacing-xs) var(--spacing-sm)',
-                    borderRadius: '8px',
-                    fontSize: 'var(--text-sm)',
-                    color: 'var(--primary)',
-                    fontWeight: '600'
-                  }}>
-                    <span style={{ fontWeight: '700' }}>Reorder tasks</span>
-                    <span>#{selectedTask.order}</span>
-                    <div style={{ display: 'flex', gap: 'var(--spacing-xs)', marginLeft: 'var(--spacing-xs)' }}>
-                      <button
-                        disabled={selectedIndex <= 1}
-                        onClick={() => reorderTask(selectedTask.id, 'up')}
-                        title={t('common.up')}
-                        style={{
-                          background: selectedIndex <= 1 ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.16)',
-                          border: '1px solid rgba(59, 130, 246, 0.35)',
-                          cursor: selectedIndex <= 1 ? 'not-allowed' : 'pointer',
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '6px',
-                          fontSize: 'var(--text-sm)',
-                          opacity: selectedIndex <= 1 ? 0.3 : 1,
-                          color: 'var(--primary)',
-                          lineHeight: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: '700'
-                        }}
-                      >
-                        ▲
-                      </button>
-                      <button
-                        disabled={selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1}
-                        onClick={() => reorderTask(selectedTask.id, 'down')}
-                        title={t('common.down')}
-                        style={{
-                          background: (selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1)
-                            ? 'rgba(59, 130, 246, 0.08)'
-                            : 'rgba(59, 130, 246, 0.16)',
-                          border: '1px solid rgba(59, 130, 246, 0.35)',
-                          cursor: (selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1) ? 'not-allowed' : 'pointer',
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '6px',
-                          fontSize: 'var(--text-sm)',
-                          opacity: (selectedIndex === 0 || selectedIndex >= workflow.tasks.length - 1) ? 0.3 : 1,
-                          color: 'var(--primary)',
-                          lineHeight: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: '700'
-                        }}
-                      >
-                        ▼
-                      </button>
-                    </div>
+                    )}
                   </div>
+                </div>
+              <div style={{ display: 'flex', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-sm)' }}>
+                <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
+                  <label>{t('tasks.task_name')}</label>
+                  <input
+                    type="text"
+                    className={`form-input ${editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) ? 'error' : ''}`}
+                    value={editingName[selectedTask.id] !== undefined ? editingName[selectedTask.id] : selectedTask.name}
+                    onChange={handleNameChange}
+                    onBlur={handleNameBlur}
+                    disabled={selectedTask.taskType === 'system'}
+                    style={{
+                      ...(editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) ? { borderColor: '#ef4444',padding: '9px var(--spacing-md)' } : {padding: '9px var(--spacing-md)'}),
+                      ...(selectedTask.taskType === 'system' ? { cursor: 'not-allowed', opacity: 0.6,padding: '9px var(--spacing-md)' } : {padding: '9px var(--spacing-md)'})
+                    }}
+                  />
+                  {editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) && (
+                    <span className="error-text" style={{ color: 'var(--danger)', fontSize: 'var(--text-xs)', marginTop: 'var(--spacing-xs)', display: 'block' }}>
+                      {t('tasks.duplicate_name_error')}
+                    </span>
+                  )}
+                </div>
 
-                  {/* Botón de Borrar Tarea */}
-                  {selectedIndex > 0 && (
-                    <button
-                      onClick={handleDeleteTask}
-                      title={t('tasks.delete_task')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                        border: '1px solid rgba(239, 68, 68, 0.15)',
-                        color: 'var(--danger)',
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        padding: 0
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
-                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
-                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.15)';
-                      }}
-                    >
-                      <IconDelete size={14} />
-                    </button>
+                <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
+                  <label>{t('tasks.task_type_label')}</label>
+                  <select
+                    className="form-input"
+                    value={selectedTask.taskType || 'normal'}
+                    onChange={(e) => updateTask(selectedTask.id, { taskType: e.target.value as 'normal' | 'dynamic' | 'iso' | 'system' })}
+                    disabled={selectedTask.taskType === 'system'}
+                    style={{
+                      cursor: selectedTask.taskType === 'system' ? 'not-allowed' : 'pointer',
+                      opacity: selectedTask.taskType === 'system' ? 0.6 : 1,
+                      fontWeight: '600'
+                    }}
+                  >
+                    {selectedTask.taskType === 'system' ? (
+                      <option value="system">{t('tasks.task_type_system')}</option>
+                    ) : (
+                      <>
+                        <option value="normal">{t('tasks.task_type_normal')}</option>
+                        <option value="dynamic">{t('tasks.task_type_dynamic')}</option>
+                        <option value="iso">{t('tasks.task_type_iso')}</option>
+                      </>
+                    )}
+                  </select>
+                  {selectedTask.taskType === 'system' && (
+                    <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--spacing-xs)' }}>
+                      {t('tasks.system_step_type_desc')}
+                    </span>
                   )}
                 </div>
               </div>
-              <div className="editor-field">
-                <label>{t('tasks.task_name')}</label>
-                <input
-                  type="text"
-                  className={`form-input ${editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) ? 'error' : ''}`}
-                  value={editingName[selectedTask.id] !== undefined ? editingName[selectedTask.id] : selectedTask.name}
-                  onChange={handleNameChange}
-                  onBlur={handleNameBlur}
-                  style={editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) ? { borderColor: '#ef4444' } : {}}
-                />
-                {editingName[selectedTask.id] !== undefined && isDuplicateTaskName(editingName[selectedTask.id], selectedTask.id) && (
-                  <span className="error-text" style={{ color: 'var(--danger)', fontSize: 'var(--text-xs)', marginTop: 'var(--spacing-xs)', display: 'block' }}>
-                    {t('tasks.duplicate_name_error')}
-                  </span>
-                )}
-              </div>
-              <div className="editor-field">
-                <label>{t('tasks.task_type_label')}</label>
-                <select
-                  className="form-input"
-                  value={selectedTask.taskType || 'normal'}
-                  onChange={(e) => updateTask(selectedTask.id, { taskType: e.target.value as 'normal' | 'dynamic' | 'iso' })}
-                  style={{
-                    cursor: 'pointer',
-                    fontWeight: '600'
-                  }}
-                >
-                  <option value="normal">{t('tasks.task_type_normal')}</option>
-                  <option value="dynamic">{t('tasks.task_type_dynamic')}</option>
-                  <option value="iso">{t('tasks.task_type_iso')}</option>
-                </select>
-              </div>
 
               {/* Conditional Approver UI */}
-              <ApproversTab selectedTask={selectedTask} updateTask={updateTask} />
+              {selectedTask.taskType !== 'system' && (
+                <ApproversTab selectedTask={selectedTask} updateTask={updateTask} />
+              )}
             </div>
 
             <FormsTab selectedTask={selectedTask} />
@@ -972,6 +1146,7 @@ export const TaskEditor = () => {
               </div>
             </div>
           </div>
+        </div>
         )}
       </div>
 

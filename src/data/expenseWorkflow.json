@@ -4,14 +4,13 @@
   "tasks": [
     {
       "id": "task-1",
-      "name": "Travel Plan & Budget Estimates",
+      "name": "Request Submit",
       "order": 1,
+      "taskType": "system",
       "formIds": [
         "form-travel-estimates"
       ],
-      "approverIds": [
-        "usr-18"
-      ],
+      "approverIds": [],
       "ui_metadata": {
         "x": 250,
         "y": 50

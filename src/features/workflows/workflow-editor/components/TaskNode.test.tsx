@@ -82,6 +82,20 @@ describe('TaskNode Component', () => {
     expect(screen.getByText('tasks.task_type_iso')).toBeInTheDocument();
   });
 
+  it('debería mostrar estado System Step', () => {
+    useWorkflowStore.setState({
+      workflow: {
+        ...initialStoreState.workflow,
+        tasks: [{ id: 't1', name: 'Request Submit', order: 1, approverIds: [], formIds: [] } as any]
+      }
+    });
+
+    const mockData = { label: 'Request Submit', order: 1, approvers: [], formTitles: [], taskType: 'system' };
+    render(<TaskNode {...({ id: "t1", data: mockData, selected: false, type: "task", xPos: 0, yPos: 0, zIndex: 1, isConnectable: true } as any)} />);
+    
+    expect(screen.getByText('tasks.system_step_badge')).toBeInTheDocument();
+  });
+
   it('debería llamar a los métodos de store al hacer clic en los controles', () => {
     // Espiamos los métodos del store
     const reorderSpy = vi.spyOn(useWorkflowStore.getState(), 'reorderTask');

@@ -647,3 +647,314 @@
   color: var(--text-muted);
   line-height: 1.45;
 }
+
+/* 📋 Visual Step List Styles */
+.btn-add-step {
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.btn-add-step:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+  transform: translateY(-0.5px);
+}
+
+.step-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  max-height: 305px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+/* Scrollbar customizations */
+.step-list-container::-webkit-scrollbar {
+  width: 5px;
+}
+
+.step-list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.step-list-container::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.15);
+  border-radius: 10px;
+}
+
+.step-list-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.3);
+}
+
+.step-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--panel-border);
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.25s ease;
+  user-select: none;
+  position: relative;
+  z-index: 2;
+}
+
+.light-theme .step-list-item {
+  background: rgba(255, 255, 255, 1);
+}
+
+.step-list-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.light-theme .step-list-item:hover {
+  background: rgb(255 255 255);
+  border-color: rgba(30, 64, 175, 0.95);
+}
+
+.step-list-item.selected {
+  background: rgba(59, 130, 246, 0.04);
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.12);
+}
+
+.light-theme .step-list-item.selected {
+  background: rgba(30, 64, 175, 0.03);
+  box-shadow: 0 4px 12px -2px rgba(30, 64, 175, 0.08);
+}
+
+.step-list-item.dragging {
+  opacity: 0.4;
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Drag handle styling */
+.step-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: grab;
+  padding-right: 2px;
+  transition: color 0.15s ease;
+}
+
+.step-list-item:hover .step-drag-handle {
+  color: var(--text-main);
+}
+
+.step-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Number Badges */
+.step-number-circle {
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.light-theme .step-number-circle {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.step-list-item.selected .step-number-circle {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+/* Text details */
+.step-content-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.step-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s ease;
+}
+
+.step-list-item.selected .step-name {
+  color: var(--primary);
+}
+
+.step-details {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Actions Widget inside selected card */
+.step-actions-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.light-theme .step-actions-container {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.step-mover-buttons {
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mover-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 20px;
+  height: 14px;
+  font-size: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.mover-btn:hover:not(:disabled) {
+  background: var(--glass-hover);
+  color: var(--primary);
+}
+
+.mover-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.step-actions-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--panel-border);
+}
+
+.step-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.step-delete-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--danger);
+}
+
+.step-delete-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* Dark Blue Selected Step Header Banner */
+.selected-step-header-banner {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  color: #ffffff;
+  padding: 12px 18px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 14.5px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+}
+
+.light-theme .selected-step-header-banner {
+  background: linear-gradient(135deg, #1d3557 0%, #1e40af 100%);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.1);
+}
+
+.banner-order-circle {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.banner-step-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ➕ Add Step Button Tweaks inside List */
+.btn-add-step-list {
+  width: 100% !important;
+  margin-bottom: 8px !important;
+  box-sizing: border-box !important;
+}
+

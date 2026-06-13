@@ -10,7 +10,8 @@ import {
   IconForm, 
   IconUsers, 
   IconDynamic, 
-  IconISO 
+  IconISO,
+  IconLock
 } from '../../../../components/ui/Icons';
 
 export const TaskNode = ({ id, data, selected }: NodeProps) => {
@@ -21,7 +22,7 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
   const approversList = data.approvers as string[];
   const formTitles = data.formTitles as string[];
   const hasSkipCondition = Boolean(data.skipCondition);
-  const taskType = (data.taskType as 'normal' | 'dynamic' | 'iso') || 'normal';
+  const taskType = (data.taskType as 'normal' | 'dynamic' | 'iso' | 'system') || 'normal';
   
   const taskIndex = workflow.tasks.findIndex(t => t.id === id);
   const isFirst = taskIndex === 0;
@@ -136,6 +137,15 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
               <span className="node-text">{t('tasks.no_approvers')}</span>
             </div>
           )
+        ) : taskType === 'system' ? (
+          <div className="node-detail font-bold" style={{ backgroundColor: 'rgba(107, 114, 128, 0.08)', border: '1px solid rgba(107, 114, 128, 0.15)', borderRadius: '6px', padding: 'var(--spacing-xs) var(--spacing-sm)' }}>
+            <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <IconLock size={12} style={{ color: '#6b7280' }} />
+            </span>
+            <span className="node-text" style={{ color: '#6b7280', fontWeight: '700', fontSize: 'var(--text-xs)' }}>
+              {t('tasks.system_step_badge')}
+            </span>
+          </div>
         ) : taskType === 'dynamic' ? (
           <div className="node-detail font-bold" style={{ backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '6px', padding: 'var(--spacing-xs) var(--spacing-sm)' }}>
             <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>

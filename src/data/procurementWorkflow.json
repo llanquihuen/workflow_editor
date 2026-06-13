@@ -4,18 +4,15 @@
   "tasks": [
     {
       "id": "task-1",
-      "name": "Vendor Profile & Security Intake",
+      "name": "Request Submit",
       "order": 1,
+      "taskType": "system",
       "formIds": [
         "form-vendor-profile",
         "form-service-details",
         "form-compliance-checks"
       ],
-      "approverIds": [
-        "usr-18",
-        "usr-5",
-        "usr-8"
-      ],
+      "approverIds": [],
       "ui_metadata": {
         "x": 250,
         "y": 50

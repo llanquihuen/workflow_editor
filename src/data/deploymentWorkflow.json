@@ -4,14 +4,13 @@
   "tasks": [
     {
       "id": "task-1",
-      "name": "Release Risk Assessment",
+      "name": "Request Submit",
       "order": 1,
+      "taskType": "system",
       "formIds": [
         "form-release-risk"
       ],
-      "approverIds": [
-        "usr-14"
-      ],
+      "approverIds": [],
       "ui_metadata": {
         "x": 250,
         "y": 50

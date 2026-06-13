@@ -289,7 +289,7 @@ const WorkflowCanvasContent = () => {
           nodes: [{ id: selectedTaskId }],
           duration: 500,
           padding: 0.3,
-          maxZoom: 0.85
+          maxZoom: 0.9
         });
       }
     } else if (!selectedTaskId) {

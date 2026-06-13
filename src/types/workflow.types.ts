@@ -55,7 +55,7 @@ export interface Task {
   ui_metadata: UIMetadata;
   condition?: TaskCondition;
   skipCondition?: TaskCondition;
-  taskType?: 'normal' | 'dynamic' | 'iso';
+  taskType?: 'normal' | 'dynamic' | 'iso' | 'system';
   allApproverRequired?: boolean;
   expirationDays?: number;
   notificationSettings?: NotificationSettings;

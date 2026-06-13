@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { Workflow, Task, Form } from '../../../types/workflow.types';
-import i18n from '../../../i18n';
 import { api, getAuthToken, getAuthUsername, removeAuthToken } from '../../../utils/api';
 
 import procurementWorkflowData from '../../../data/procurementWorkflow.json';
@@ -424,7 +423,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set((state) => {
       const uniqueName = getUniqueWorkflowName(name, state.workflows);
       const newId = `WK-${Math.floor(100000 + Math.random() * 900000)}`;
-      const taskName = i18n.t('tasks.new_task_default') || 'Paso 1';
       const newWorkflow: Workflow = {
         id: newId,
         name: uniqueName,
@@ -440,8 +438,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         tasks: [
           {
             id: `${newId}-T-1`,
-            name: taskName,
+            name: 'Request Submit',
             order: 1,
+            taskType: 'system',
             ui_metadata: { x: 250, y: 50 },
             approverIds: [],
             formIds: [],

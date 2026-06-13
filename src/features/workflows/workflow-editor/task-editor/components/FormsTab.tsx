@@ -334,8 +334,6 @@ export const FormsTab = ({ selectedTask }: FormsTabProps) => {
     <>
       <div className="editor-section">
         <h4>{t('tasks.linked_forms')}</h4>
-        <p className="form-desc" style={{ marginBottom: 'var(--spacing-sm)' }}>{t('tasks.select_global_forms')}</p>
-
         {/* 📋 Associated Forms Summary */}
         <div className="associated-forms-summary">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)' }}>
@@ -367,7 +365,7 @@ export const FormsTab = ({ selectedTask }: FormsTabProps) => {
                     key={id} 
                     className="form-summary-card" 
                     data-form-id={form.id}
-                    style={{ padding: 'var(--spacing-md) var(--spacing-md)', cursor: 'pointer' }}
+                    style={{ padding: 'var(--spacing-sm) var(--spacing-sm)', cursor: 'pointer' }}
                     onClick={() => {
                       setSelectedForm(form.id);
                       setCurrentView('forms');
@@ -375,16 +373,46 @@ export const FormsTab = ({ selectedTask }: FormsTabProps) => {
                     title={t('tasks.click_to_edit_form')}
                   >
                     <div className="summary-card-header" style={{ marginBottom: 0, alignItems: 'center' }}>
+
                       <div className="summary-card-title-group" style={{ minWidth: 0, flex: 1, gap: 'var(--spacing-sm)' }}>
                         <span className="summary-card-icon" style={{ flexShrink: 0 }}>📄</span>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <h4 className="summary-card-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0px' }}>{form.title}</h4>
+                          <h4
+                              className="summary-card-title"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--spacing-xs)',
+                                marginBottom: '0px',
+                                minWidth: 0,
+                              }}
+                          >
+                            <span
+                                style={{
+                                  minWidth: 0,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={form.title}
+                            >
+                              {form.title}
+                            </span>
+                            <span
+                                style={{
+                                  fontSize: 'var(--text-xs)',
+                                  color: 'var(--text-muted)',
+                                  fontWeight: '400',
+                                  flexShrink: 0,
+                                }}
+                            >
+                              ({questionCount} {questionCount === 1 ? t('tasks.questions_count_label') : t('tasks.questions_count_label_plural')})
+                            </span>
+                          </h4>
                           {form.description ? (
-                            <p className="summary-card-desc" style={{ marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.description}</p>
+                              <p className="summary-card-desc" style={{ marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.description}</p>
                           ) : null}
-                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: '600', display: 'inline-block', marginTop: 'var(--spacing-xs)' }}>
-                            {questionCount} {questionCount === 1 ? t('tasks.questions_count_label') : t('tasks.questions_count_label_plural')}
-                          </span>
+
                         </div>
                       </div>
                       

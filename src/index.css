@@ -516,7 +516,7 @@ body {
   border-radius: 8px;
   padding: var(--spacing-md) var(--spacing-lg);
   box-shadow: 0 4px 6px -1px var(--shadow-color);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -1404,9 +1404,9 @@ body {
 /* Botón Añadir Pregunta */
 .btn-add-question {
   width: 100%;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   background-color: transparent;
-  border: 2px dashed var(--panel-border);
+  border: 1px dashed var(--panel-border);
   border-radius: 12px;
   color: var(--text-muted);
   font-size: var(--text-md);
@@ -1417,7 +1417,6 @@ body {
   justify-content: center;
   gap: 10px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 10px;
 }
 
 .btn-add-question:hover {
