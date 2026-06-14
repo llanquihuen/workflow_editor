@@ -1066,9 +1066,38 @@ export const TaskEditor = () => {
                                             </select>
                                           );
                                         }
+                                        if (targetQ && targetQ.type === 'yes_no') {
+                                          return (
+                                            <select
+                                              className="form-input"
+                                              value={rule.value}
+                                              onChange={(e) => handleUpdateRule(cond.id, rule.id, { value: e.target.value })}
+                                              style={{ padding: '8px var(--spacing-sm)', fontSize: '12px' }}
+                                            >
+                                              <option value="">{t('common.select_option')}</option>
+                                              <option value="Yes">{t('common.yes')}</option>
+                                              <option value="No">{t('common.no')}</option>
+                                            </select>
+                                          );
+                                        }
+                                        if (targetQ && targetQ.type === 'user') {
+                                          return (
+                                            <select
+                                              className="form-input"
+                                              value={rule.value}
+                                              onChange={(e) => handleUpdateRule(cond.id, rule.id, { value: e.target.value })}
+                                              style={{ padding: '8px var(--spacing-sm)', fontSize: '12px' }}
+                                            >
+                                              <option value="">{t('common.select_option')}</option>
+                                              {DUMMY_USERS.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name}</option>
+                                              ))}
+                                            </select>
+                                          );
+                                        }
                                         return (
                                           <input
-                                            type="text"
+                                            type={targetQ && targetQ.type === 'date' ? 'date' : 'text'}
                                             className="form-input"
                                             value={rule.value}
                                             onChange={(e) => handleUpdateRule(cond.id, rule.id, { value: e.target.value })}

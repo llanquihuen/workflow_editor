@@ -1189,8 +1189,8 @@ body {
 }
 
 .question-editor-card.conditional-card .question-number-chip {
-  background-color: #8E319C !important;
-  color: white !important;
+  background: var(--glass-hover);
+  color: #8E319C !important;
 }
 
 .btn-add-disclaimer:active {
@@ -2877,4 +2877,15 @@ body {
   visibility: visible;
   opacity: 1;
   transform: translateX(-50%) translateY(-2px);
+}
+
+.file-upload-zone {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.file-upload-zone:hover {
+  border-color: var(--primary, #2563eb) !important;
+  background-color: rgba(37, 99, 235, 0.04) !important;
+}
+.light-theme .file-upload-zone:hover {
+  background-color: rgba(37, 99, 235, 0.02) !important;
 }

@@ -6,6 +6,7 @@ import { CollapsedQuestionItem } from './components/CollapsedQuestionItem';
 import { QuestionAlternativesEditor } from './components/QuestionAlternativesEditor';
 import type { FormQuestion, QuestionType, Form } from '../../../../types/workflow.types';
 import { IconDelete } from '../../../../components/ui/Icons';
+import { DUMMY_USERS } from '../../../../utils/constants';
 
 import {
   getQuestionNumberMap,
@@ -34,6 +35,336 @@ const IconForm = ({ size = 16, color = 'currentColor' }: { size?: number; color?
     <polyline points="10 9 9 9 8 9" />
   </svg>
 );
+
+const UserSearchPreview = ({
+  value,
+  onChange,
+  t
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  t: any;
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [results, setResults] = useState<{ id: string; name: string }[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    if (val === '') {
+      onChange('');
+    }
+  };
+
+  const handleSelect = (user: { id: string; name: string }) => {
+    onChange(user.id);
+    setSearchQuery(user.name);
+    setShowDropdown(false);
+  };
+
+  React.useEffect(() => {
+    if (searchQuery.length >= 3) {
+      // Don't search if the search query exactly matches the current selected user name
+      const selectedUser = DUMMY_USERS.find(u => u.id === value);
+      if (selectedUser && selectedUser.name === searchQuery) {
+        setResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+      setShowDropdown(true);
+      const timer = setTimeout(() => {
+        const filtered = DUMMY_USERS.filter(u =>
+          u.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setResults(filtered);
+        setIsSearching(false);
+      }, 400);
+      return () => clearTimeout(timer);
+    } else {
+      setResults([]);
+      setShowDropdown(false);
+      setIsSearching(false);
+    }
+  }, [searchQuery, value]);
+
+  // Sync searchQuery with current value if it exists on mount / when value changes externally
+  React.useEffect(() => {
+    if (value) {
+      const matched = DUMMY_USERS.find(u => u.id === value);
+      if (matched) {
+        setSearchQuery(matched.name);
+      }
+    } else {
+      setSearchQuery('');
+    }
+  }, [value]);
+
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <input
+        type="text"
+        className="form-input"
+        placeholder={t('common.search') || "Search user..."}
+        value={searchQuery}
+        onChange={handleInputChange}
+        onFocus={() => {
+          if (searchQuery.length >= 3) {
+            setShowDropdown(true);
+          }
+        }}
+        onBlur={() => {
+          // Timeout to allow clicking on dropdown items
+          setTimeout(() => setShowDropdown(false), 200);
+        }}
+      />
+      {searchQuery.length > 0 && searchQuery.length < 3 && (
+        <span style={{ fontSize: '10px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px', display: 'block' }}>
+          Type at least 3 characters to search...
+        </span>
+      )}
+      {showDropdown && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            maxHeight: '200px',
+            overflowY: 'auto',
+            background: 'var(--panel-bg, #1e293b)',
+            border: '1px solid var(--panel-border, #334155)',
+            borderRadius: '8px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)',
+            marginTop: '4px',
+            padding: '4px 0'
+          }}
+        >
+          {isSearching ? (
+            <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>
+              🔍 Simulating database query...
+            </div>
+          ) : results.length > 0 ? (
+            results.map(u => (
+              <div
+                key={u.id}
+                style={{
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  fontSize: 'var(--text-sm, 13px)',
+                  color: 'var(--text-main, #f8fafc)',
+                  backgroundColor: hoveredId === u.id ? 'var(--primary, #2563eb)' : 'transparent',
+                  transition: 'background-color 0.15s ease'
+                }}
+                onMouseEnter={() => setHoveredId(u.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                onMouseDown={() => handleSelect(u)}
+              >
+                <span>{u.name}</span>
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>
+              No users found matching query
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FileDragAndDropPreview = ({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      onChange(file.name);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onChange(file.name);
+    }
+  };
+
+  const triggerBrowse = () => {
+    fileInputRef.current?.click();
+  };
+
+  const clearFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={triggerBrowse}
+      style={{
+        border: isDragging
+          ? '1px solid var(--primary, #2563eb)'
+          : '1px solid var(--panel-border, #e2e8f0)',
+        backgroundColor: isDragging
+          ? 'rgba(37, 99, 235, 0.06)'
+          : 'rgba(243, 244, 246, 0.02)',
+        borderRadius: '8px',
+        padding: '12px 16px',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease-in-out',
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: '16px',
+        userSelect: 'none',
+        width: '100%',
+        minHeight: '62px'
+      }}
+      className="file-upload-zone"
+    >
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
+
+      {/* Left Icon Container */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '36px',
+          height: '36px',
+          backgroundColor: value
+            ? 'rgba(16, 185, 129, 0.08)' // Green background if uploaded
+            : 'rgba(37, 99, 235, 0.08)', // Blue background if empty
+          color: value ? 'var(--success, #10b981)' : 'var(--primary, #2563eb)',
+          borderRadius: '6px',
+          flexShrink: 0
+        }}
+      >
+        {value ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        )}
+      </div>
+
+      {/* Middle Text / Selected File Details */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
+        {value ? (
+          <>
+            <span
+              style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: 'var(--text-main, #f8fafc)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                width: '100%',
+                textAlign: 'left'
+              }}
+              title={value}
+            >
+              {value}
+            </span>
+            <span style={{ fontSize: '10px', color: 'var(--success, #10b981)' }}>
+              ✓ Ready for upload
+            </span>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--primary, #2563eb)', textAlign: 'left' }}>
+              Click to upload or drag and drop
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)', textAlign: 'left', marginTop: '2px' }}>
+              PDF, XLSX, DOCX, ZIP — max 25 MB
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Right Action Button (Clear) */}
+      {value && (
+        <button
+          type="button"
+          onClick={clearFile}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-muted, #94a3b8)',
+            cursor: 'pointer',
+            fontSize: '18px',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 1,
+            transition: 'color 0.2s'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger, #ef4444)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted, #94a3b8)'; }}
+          title="Remove file"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+};
+
 
 export const FormLibrary = () => {
   const { t } = useTranslation();
@@ -526,9 +857,9 @@ export const FormLibrary = () => {
                 >
                   {t('forms.new_form')}
                 </button>
-                <button className="btn-icon" onClick={() => setIsCollapsed(true)} title={t('common.collapse')} style={{ color: '#c5c5c5', marginLeft: 'var(--spacing-xs)', alignSelf: 'center' }}>
-                  ◀
-                </button>
+                {/*<button className="btn-icon" onClick={() => setIsCollapsed(true)} title={t('common.collapse')} style={{ color: '#c5c5c5', marginLeft: 'var(--spacing-xs)', alignSelf: 'center' }}>*/}
+                {/*  ◀*/}
+                {/*</button>*/}
               </div>
             </>
           ) : (
@@ -674,9 +1005,45 @@ export const FormLibrary = () => {
                         <textarea className="form-input textarea" value={selectedForm.description || ''} onChange={handleDescChange} />
                       </div>
                       {ownerTask && (
-                        <p className="form-desc" style={{ marginTop: 'var(--spacing-sm)', fontWeight:"bold" }}>
-                          {t('forms.occupied_by_task', { taskName: ownerTask.name })}
-                        </p>
+                        <div
+                          style={{
+                            marginTop: 'var(--spacing-md)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'var(--spacing-sm)',
+                            backgroundColor: 'rgba(37, 99, 235, 0.05)',
+                            border: '1px solid rgba(37, 99, 235, 0.15)',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            color: 'var(--primary, #2563eb)'
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ flexShrink: 0 }}
+                          >
+                            <rect x="9" y="3" width="6" height="6" rx="1" />
+                            <rect x="3" y="15" width="6" height="6" rx="1" />
+                            <rect x="15" y="15" width="6" height="6" rx="1" />
+                            <path d="M12 9v3M12 12H6v3M12 12h6v3" />
+                          </svg>
+                          <span style={{ fontSize: '12.5px', lineHeight: '1.4', textAlign: 'left' }}>
+                            <span style={{ fontWeight: '500' }}>
+                              {t('forms.occupied_by_task').split('{{taskName}}')[0] || 'Used by step: '}
+                            </span>
+                            <span style={{ fontWeight: '700', color: 'var(--primary, #2563eb)' }}>
+                              {ownerTask.name}
+                            </span>
+                            {t('forms.occupied_by_task').split('{{taskName}}')[1] || ''}
+                          </span>
+                        </div>
                       )}
                     </div>
 
@@ -1047,6 +1414,12 @@ export const FormLibrary = () => {
                                     <option value="dropdown">{t('forms.types.dropdown')}</option>
                                     <option value="radio">{t('forms.types.radio')}</option>
                                     <option value="checkbox">{t('forms.types.checkbox')}</option>
+                                    <option value="file">{t('forms.types.file')}</option>
+                                    <option value="email">{t('forms.types.email')}</option>
+                                    <option value="phone">{t('forms.types.phone')}</option>
+                                    <option value="yes_no">{t('forms.types.yes_no')}</option>
+                                    <option value="date">{t('forms.types.date')}</option>
+                                    <option value="user">{t('forms.types.user')}</option>
                                   </select>
                                 </div>
 
@@ -1179,9 +1552,38 @@ export const FormLibrary = () => {
                                               </select>
                                             );
                                           }
+                                          if (targetQ && targetQ.type === 'yes_no') {
+                                            return (
+                                              <select
+                                                className="form-input"
+                                                style={{ flex: 1 }}
+                                                value={cond.value}
+                                                onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...cond, value: e.target.value } })}
+                                              >
+                                                <option value="">{t('common.select_option')}</option>
+                                                <option value="Yes">{t('common.yes')}</option>
+                                                <option value="No">{t('common.no')}</option>
+                                              </select>
+                                            );
+                                          }
+                                          if (targetQ && targetQ.type === 'user') {
+                                            return (
+                                              <select
+                                                className="form-input"
+                                                style={{ flex: 1 }}
+                                                value={cond.value}
+                                                onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...cond, value: e.target.value } })}
+                                              >
+                                                <option value="">{t('common.select_option')}</option>
+                                                {DUMMY_USERS.map(u => (
+                                                  <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))}
+                                              </select>
+                                            );
+                                          }
                                           return (
                                             <input
-                                              type="text"
+                                              type={targetQ && targetQ.type === 'date' ? 'date' : 'text'}
                                               className="form-input"
                                               style={{ flex: 1 }}
                                               placeholder={t('forms.expected_value')}
@@ -1303,9 +1705,26 @@ export const FormLibrary = () => {
                                     <option key={opt} value={opt}>{opt}</option>
                                   ))}
                                 </select>
+                              ) : question.type === 'yes_no' ? (
+                                <select
+                                  className="form-input"
+                                  style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)' }}
+                                  value={previewAnswers[question.id] || ''}
+                                  onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [question.id]: e.target.value }))}
+                                >
+                                  <option value="">{t('forms.simulation.select_option')}</option>
+                                  <option value="Yes">{t('common.yes')}</option>
+                                  <option value="No">{t('common.no')}</option>
+                                </select>
+                              ) : question.type === 'user' ? (
+                                <UserSearchPreview
+                                  value={previewAnswers[question.id] || ''}
+                                  onChange={(val) => setPreviewAnswers(prev => ({ ...prev, [question.id]: val }))}
+                                  t={t}
+                                />
                               ) : (
                                 <input
-                                  type={question.type === 'number' ? 'number' : 'text'}
+                                  type={question.type === 'number' ? 'number' : question.type === 'date' ? 'date' : 'text'}
                                   className="form-input"
                                   style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)' }}
                                   placeholder={t('forms.simulation.test_value_placeholder')}
@@ -1373,6 +1792,75 @@ export const FormLibrary = () => {
                                     <option value="">{t('common.select_option')}</option>
                                     {(q.options || []).map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                                   </select>
+                                )}
+
+                                {q.type === 'file' && (
+                                  <FileDragAndDropPreview
+                                    value={previewAnswers[q.id] || ''}
+                                    onChange={(val) => setPreviewAnswers(prev => ({ ...prev, [q.id]: val }))}
+                                  />
+                                )}
+
+                                {q.type === 'email' && (
+                                  <input
+                                    type="email"
+                                    className="form-input"
+                                    placeholder="example@domain.com"
+                                    value={previewAnswers[q.id] || ''}
+                                    onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                  />
+                                )}
+
+                                {q.type === 'phone' && (
+                                  <input
+                                    type="tel"
+                                    className="form-input"
+                                    placeholder="+1 (555) 000-0000"
+                                    value={previewAnswers[q.id] || ''}
+                                    onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                  />
+                                )}
+
+                                {q.type === 'yes_no' && (
+                                  <div className="options-group" style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
+                                    <label className="option-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                                      <input
+                                        type="radio"
+                                        name={`preview-yesno-${q.id}`}
+                                        value="Yes"
+                                        checked={previewAnswers[q.id] === 'Yes'}
+                                        onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                      />
+                                      {t('common.yes')}
+                                    </label>
+                                    <label className="option-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                                      <input
+                                        type="radio"
+                                        name={`preview-yesno-${q.id}`}
+                                        value="No"
+                                        checked={previewAnswers[q.id] === 'No'}
+                                        onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                      />
+                                      {t('common.no')}
+                                    </label>
+                                  </div>
+                                )}
+
+                                {q.type === 'date' && (
+                                  <input
+                                    type="date"
+                                    className="form-input"
+                                    value={previewAnswers[q.id] || ''}
+                                    onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                  />
+                                )}
+
+                                {q.type === 'user' && (
+                                  <UserSearchPreview
+                                    value={previewAnswers[q.id] || ''}
+                                    onChange={(val) => setPreviewAnswers(prev => ({ ...prev, [q.id]: val }))}
+                                    t={t}
+                                  />
                                 )}
 
                                 {q.type === 'radio' && (

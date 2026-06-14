@@ -1,4 +1,4 @@
-export type QuestionType = 'text' | 'number' | 'dropdown' | 'checkbox' | 'radio' | 'textarea' | 'disclaimer';
+export type QuestionType = 'text' | 'number' | 'dropdown' | 'checkbox' | 'radio' | 'textarea' | 'disclaimer' | 'file' | 'email' | 'phone' | 'yes_no' | 'date' | 'user';
 
 export interface FormQuestionCondition {
   formId?: string; // Opcional: si está presente, la pregunta origen pertenece a otro formulario en el workflow
