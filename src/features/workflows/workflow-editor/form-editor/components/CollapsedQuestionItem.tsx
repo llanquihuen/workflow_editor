@@ -33,9 +33,17 @@ export const CollapsedQuestionItem = ({
   moveDownLabel
 }: CollapsedQuestionItemProps) => {
   return (
-    <div className="question-editor-card collapsed" data-q-id={question.id}>
+    <div
+      className={`question-editor-card collapsed ${question.type === 'disclaimer' ? 'disclaimer-card' : ''} ${question.condition ? 'conditional-card' : ''}`}
+      data-q-id={question.id}
+    >
       <div className="card-header">
-        <div className="question-number-chip">{questionNumber}</div>
+        <div
+          className="question-number-chip"
+          style={question.type === 'disclaimer' ? { backgroundColor: '#0f766e', color: 'white' } : {}}
+        >
+          {questionNumber}
+        </div>
         <button className="btn-icon btn-collapse collapsed" onClick={onExpand}>
           ▼
         </button>
@@ -45,13 +53,18 @@ export const CollapsedQuestionItem = ({
             {question.label}
           </span>
 
-          {question.required && <span title={requiredLabel} style={{ fontSize: 'var(--text-md)', color: '#ef4444', fontWeight: 700 }}>*</span>}
-          {question.condition && (
+          {question.type === 'disclaimer' && (
+            <span className="node-badge badge-disclaimer" style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+              DISCLAIMER
+            </span>
+          )}
+          {question.required && question.type !== 'disclaimer' && <span title={requiredLabel} style={{ fontSize: 'var(--text-md)', color: '#ef4444', fontWeight: 700 }}>*</span>}
+          {question.condition && question.type !== 'disclaimer' && (
             <span title={conditionalLabel} style={{ display: 'inline-flex', alignItems: 'center', color: '#fbbf24' }}>
               <IconLink size={12} />
             </span>
           )}
-          {question.isSensitive && (
+          {question.isSensitive && question.type !== 'disclaimer' && (
             <span title={sensitiveLabel} style={{ display: 'inline-flex', alignItems: 'center', color: '#a78bfa' }}>
               <IconLock size={12} />
             </span>

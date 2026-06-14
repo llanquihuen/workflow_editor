@@ -15,6 +15,26 @@ import {
   sortQuestionsHierarchically
 } from '../../utils/formHierarchy';
 
+const IconForm = ({ size = 16, color = 'currentColor' }: { size?: number; color?: string }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ minWidth: size }}
+  >
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+
 export const FormLibrary = () => {
   const { t } = useTranslation();
   const { workflow, selectedFormId, setSelectedForm, addForm, updateForm, deleteForm } = useWorkflowStore();
@@ -296,15 +316,44 @@ export const FormLibrary = () => {
     updateForm(selectedForm.id, { questions: assignDisplayNumbers(flatQuestions) });
   };
 
+  const isDuplicateQuestionLabel = (label: string, questionId: string) => {
+    if (!selectedForm) return false;
+    return selectedForm.questions.some(q => q.id !== questionId && q.label.toLowerCase().trim() === label.toLowerCase().trim());
+  };
+
+  const getUniqueQuestionLabel = (baseLabel: string) => {
+    if (!selectedForm) return baseLabel;
+    let label = baseLabel;
+    let counter = 1;
+    while (selectedForm.questions.some(q => q.label.toLowerCase().trim() === label.toLowerCase().trim())) {
+      label = `${baseLabel} ${counter}`;
+      counter++;
+    }
+    return label;
+  };
+
   const handleAddQuestion = () => {
     if (!selectedForm) return;
     const newQuestion: FormQuestion = {
       id: `q-${crypto.randomUUID()}`,
       type: 'text',
-      label: t('forms.new_question'),
+      label: getUniqueQuestionLabel(t('forms.new_question')),
       required: false
     };
     const newQuestions = [...selectedForm.questions, newQuestion];
+    updateForm(selectedForm.id, { questions: assignDisplayNumbers(newQuestions) });
+  };
+
+  const handleAddDisclaimer = () => {
+    if (!selectedForm) return;
+    const newDisclaimer: FormQuestion = {
+      id: `q-${crypto.randomUUID()}`,
+      type: 'disclaimer',
+      label: getUniqueQuestionLabel(t('forms.new_disclaimer_title')),
+      description: t('forms.new_disclaimer_text'),
+      required: false
+    };
+    const newQuestions = [...selectedForm.questions, newDisclaimer];
     updateForm(selectedForm.id, { questions: assignDisplayNumbers(newQuestions) });
   };
 
@@ -435,25 +484,59 @@ export const FormLibrary = () => {
     <div className="form-library-layout">
       {/* Sidebar de Formularios */}
       <div className={`library-sidebar ${isCollapsed ? 'library-sidebar-min' : ''}`}>
-        <div className="sidebar-header">
+        <div className="sidebar-header" style={{ padding: 'var(--spacing-md) var(--spacing-sm) var(--spacing-md) var(--spacing-md)' }}>
           {!isCollapsed ? (
             <>
-              <h3>{t('forms.title')} ({forms.length})</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                <span style={{ fontWeight: 800, fontSize: '12px', letterSpacing: '0.05em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  {t('forms.title')}
+                </span>
+                <span style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'white',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  lineHeight: '1.2'
+                }}>
+                  {forms.length}
+                </span>
+              </div>
               <div style={{ display: 'flex', gap: 'var(--spacing-xs)', alignItems: 'center' }}>
-                <button className="btn-premium-action" onClick={handleCreateForm} title={t('forms.new_form_title')}>
+                <button
+                  className="btn-new-form"
+                  onClick={handleCreateForm}
+                  title={t('forms.new_form_title')}
+                  style={{
+                    backgroundColor: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '20px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'background-color 0.2s',
+                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+                  }}
+                >
                   {t('forms.new_form')}
                 </button>
-                <button className="btn-icon" onClick={() => setIsCollapsed(true)} title={t('common.collapse')} style={{ color: '#c5c5c5',position:'relative', right: '0px', top: '-17px'}}>
+                <button className="btn-icon" onClick={() => setIsCollapsed(true)} title={t('common.collapse')} style={{ color: '#c5c5c5', marginLeft: 'var(--spacing-xs)', alignSelf: 'center' }}>
                   ◀
                 </button>
               </div>
             </>
           ) : (
             <div>
-              <button className="btn-icon" onClick={() => setIsCollapsed(false)} title={t('common.expand')} style={{ color: '#c5c5c5',position:'relative', right: '-25px', top: '-7px'}}>
+              <button className="btn-icon" onClick={() => setIsCollapsed(false)} title={t('common.expand')} style={{ color: '#c5c5c5', position: 'relative', right: '-25px', top: '-7px' }}>
                 ▶
               </button>
-              <h3 style={{marginBottom:'var(--spacing-xs)'}}>{t('forms.title')}</h3>
+              <h3 style={{ marginBottom: 'var(--spacing-xs)' }}>{t('forms.title')}</h3>
             </div>
           )}
         </div>
@@ -482,14 +565,27 @@ export const FormLibrary = () => {
                     textAlign: 'center',
                     whiteSpace: 'normal',
                     wordBreak: 'break-word',
-
                   }}>
                     {f.title.substring(0, 5).toUpperCase()}{f.title.charAt(15) ? '...' : ''}
                   </span>
                 </div>
               ) : (
                 <>
-                  <span>{f.title}</span>
+                  <div className="form-item-icon" style={{
+                    color: f.id === selectedFormId ? 'var(--primary)' : 'var(--text-muted)'
+                  }}>
+                    <IconForm size={18} />
+                  </div>
+                  <div className="form-item-content">
+                    <div className="form-item-title" style={{
+                      color: f.id === selectedFormId ? 'var(--primary)' : 'var(--text-main)'
+                    }}>
+                      {f.title}
+                    </div>
+                    <div className="form-item-subtitle">
+                      {f.questions.length} {f.questions.length === 1 ? t('tasks.questions_count_label') : t('tasks.questions_count_label_plural')}
+                    </div>
+                  </div>
                   <button
                     className="btn-icon danger form-delete-btn"
                     onClick={(e) => { e.stopPropagation(); handleDeleteForm(f.id); }}
@@ -602,13 +698,24 @@ export const FormLibrary = () => {
                       {selectedForm.questions.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: 'var(--spacing-xl)' }}>
                           <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>{t('forms.no_questions')}</p>
-                          <button
-                            className="btn-add-question"
-                            onClick={handleAddQuestion}
-                          >
-                            <span className="add-icon">+</span>
-                            {t('forms.add_question')}
-                          </button>
+                          <div style={{ display: 'flex', gap: 'var(--spacing-md)', justifyContent: 'center' }}>
+                            <button
+                              className="btn-add-question"
+                              onClick={handleAddQuestion}
+                              style={{ width: 'auto', padding: 'var(--spacing-md) var(--spacing-lg)' }}
+                            >
+                              <span className="add-icon">+</span>
+                              {t('forms.add_question')}
+                            </button>
+                            <button
+                              className="btn-add-disclaimer"
+                              onClick={handleAddDisclaimer}
+                              style={{ width: 'auto', padding: 'var(--spacing-md) var(--spacing-lg)' }}
+                            >
+                              <span className="add-icon">+</span>
+                              {t('forms.add_disclaimer')}
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <div ref={questionsListRef} className="questions-editor-list">
@@ -641,8 +748,159 @@ export const FormLibrary = () => {
                               );
                             }
 
+                            if (q.type === 'disclaimer') {
+                              return (
+                                <div key={q.id} className="question-editor-card disclaimer-card" data-q-id={q.id}>
+                                  <div className="card-header" style={{ alignItems: 'center' }}>
+                                    <div className="question-number-chip" style={{ backgroundColor: '#0f766e', color: 'white' }}>
+                                      {questionNumberMap.get(q.id) || `D${index + 1}`}
+                                    </div>
+                                    <button
+                                      className="btn-icon btn-collapse"
+                                      onClick={() => handleToggleCollapse(q.id)}
+                                      style={{ marginTop: 'var(--spacing-xs)', alignSelf: 'start' }}
+                                    >
+                                      ▼
+                                    </button>
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', width: '100%' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', width: '100%', position: 'relative' }}>
+                                          <textarea
+                                            className={`form-input label-input ${isDuplicateQuestionLabel(q.label, q.id) ? 'error' : ''}`}
+                                            value={q.label}
+                                            onChange={(e) => handleQuestionUpdate(q.id, { label: e.target.value })}
+                                            style={{ flex: 1, minHeight: '60px', resize: 'vertical', paddingBottom: '20px', borderColor: isDuplicateQuestionLabel(q.label, q.id) ? '#ef4444' : '' }}
+                                            rows={2}
+                                            maxLength={500}
+                                          />
+                                          <span style={{
+                                            position: 'absolute',
+                                            bottom: '5px',
+                                            right: '10px',
+                                            fontSize: '9px',
+                                            color: 'var(--text-muted)'
+                                          }}>
+                                            {q.label.length} / 500
+                                          </span>
+                                        </div>
+                                        {isDuplicateQuestionLabel(q.label, q.id) && (
+                                          <span className="error-text" style={{ color: '#ef4444', fontSize: 'var(--text-xs)', marginTop: '2px', display: 'block' }}>
+                                            {t('forms.duplicate_question_error')}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div style={{ display: 'flex', gap: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
+                                        <span className="node-badge badge-disclaimer">DISCLAIMER</span>
+                                      </div>
+                                    </div>
+                                    {/* Up / Down Reorder Buttons */}
+                                    <button
+                                      type="button"
+                                      className="btn-icon"
+                                      disabled={isUpDisabled}
+                                      onClick={(e) => { e.stopPropagation(); handleMoveQuestion(q.id, 'up'); }}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '34px',
+                                        height: '34px',
+                                        minWidth: '34px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--panel-border)',
+                                        background: 'transparent',
+                                        color: isUpDisabled ? 'var(--text-muted)' : 'var(--primary)',
+                                        opacity: isUpDisabled ? 0.25 : 1,
+                                        cursor: isUpDisabled ? 'not-allowed' : 'pointer',
+                                        padding: 0,
+                                        fontSize: 'var(--text-sm)',
+                                        alignSelf: 'start',
+                                        marginRight: 'var(--spacing-xs)'
+                                      }}
+                                      title={t('common.move_up') || 'Mover arriba'}
+                                    >
+                                      ▲
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn-icon"
+                                      disabled={isDownDisabled}
+                                      onClick={(e) => { e.stopPropagation(); handleMoveQuestion(q.id, 'down'); }}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '34px',
+                                        height: '34px',
+                                        minWidth: '34px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--panel-border)',
+                                        background: 'transparent',
+                                        color: isDownDisabled ? 'var(--text-muted)' : 'var(--primary)',
+                                        opacity: isDownDisabled ? 0.25 : 1,
+                                        cursor: isDownDisabled ? 'not-allowed' : 'pointer',
+                                        padding: 0,
+                                        fontSize: 'var(--text-sm)',
+                                        alignSelf: 'start',
+                                        marginRight: 'var(--spacing-xs)'
+                                      }}
+                                      title={t('common.move_down') || 'Mover abajo'}
+                                    >
+                                      ▼
+                                    </button>
+                                    <button
+                                      className="btn-icon danger question-delete-btn"
+                                      onClick={() => handleDeleteQuestion(q.id)}
+                                      title={t('common.delete')}
+                                      aria-label={t('common.delete')}
+                                      style={{
+                                        alignSelf: 'start',
+                                        width: '34px',
+                                        height: '34px',
+                                        minWidth: '34px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: '8px',
+                                        fontSize: 'var(--text-md)',
+                                        lineHeight: 1,
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      <IconDelete size={14} />
+                                    </button>
+                                  </div>
+
+                                  <div className="card-body" style={{ marginTop: 'var(--spacing-md)' }}>
+                                    <div className="field-group" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', position: 'relative', width: '100%' }}>
+                                      <label style={{ fontWeight: 'bold', color: 'black', marginBottom: '2px' }}>
+                                        {t('forms.disclaimer_text')}
+                                      </label>
+                                      <textarea
+                                        className="form-input textarea"
+                                        value={q.description || ''}
+                                        onChange={(e) => handleQuestionUpdate(q.id, { description: e.target.value })}
+                                        style={{ minHeight: '100px', resize: 'vertical', paddingBottom: '20px', width: '100%' }}
+                                        maxLength={1000}
+                                        rows={4}
+                                      />
+                                      <span style={{
+                                        position: 'absolute',
+                                        bottom: '5px',
+                                        right: '10px',
+                                        fontSize: '9px',
+                                        color: 'var(--text-muted)'
+                                      }}>
+                                        {(q.description || '').length} / 1000
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+
                             return (
-                            <div key={q.id} className="question-editor-card" data-q-id={q.id}>
+                            <div key={q.id} className={`question-editor-card ${q.condition ? 'conditional-card' : ''}`} data-q-id={q.id}>
                               <div className="card-header" style={{ alignItems: 'center' }}>
                                 <div className="question-number-chip">{questionNumberMap.get(q.id) || `${index + 1}`}</div>
                                 <button
@@ -653,14 +911,31 @@ export const FormLibrary = () => {
                                   ▼
                                 </button>
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', width: '100%' }}>
-                                    <textarea
-                                      className="form-input label-input"
-                                      value={q.label}
-                                      onChange={(e) => handleQuestionUpdate(q.id, { label: e.target.value })}
-                                      style={{ flex: 1, minHeight: '60px', resize: 'vertical' }}
-                                      rows={2}
-                                    />
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', width: '100%' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', width: '100%', position: 'relative' }}>
+                                      <textarea
+                                        className={`form-input label-input ${isDuplicateQuestionLabel(q.label, q.id) ? 'error' : ''}`}
+                                        value={q.label}
+                                        onChange={(e) => handleQuestionUpdate(q.id, { label: e.target.value })}
+                                        style={{ flex: 1, minHeight: '60px', resize: 'vertical', paddingBottom: '20px', borderColor: isDuplicateQuestionLabel(q.label, q.id) ? '#ef4444' : '' }}
+                                        rows={2}
+                                        maxLength={500}
+                                      />
+                                      <span style={{
+                                        position: 'absolute',
+                                        bottom: '5px',
+                                        right: '10px',
+                                        fontSize: '9px',
+                                        color: 'var(--text-muted)'
+                                      }}>
+                                        {q.label.length} / 500
+                                      </span>
+                                    </div>
+                                    {isDuplicateQuestionLabel(q.label, q.id) && (
+                                      <span className="error-text" style={{ color: '#ef4444', fontSize: 'var(--text-xs)', marginTop: '2px', display: 'block' }}>
+                                        {t('forms.duplicate_question_error')}
+                                      </span>
+                                    )}
                                   </div>
                                   <div style={{ display: 'flex', gap: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
                                     {q.required && <span className="node-badge badge-required">{t('common.required')}</span>}
@@ -954,13 +1229,24 @@ export const FormLibrary = () => {
 
                       {selectedForm.questions.length > 0 && (
                         <div style={{ marginTop: 'var(--spacing-xl)' }}>
-                          <button
-                            className="btn-add-question"
-                            onClick={handleAddQuestion}
-                          >
-                            <span className="add-icon">+</span>
-                            {t('forms.add_question')}
-                          </button>
+                          <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
+                            <button
+                              className="btn-add-question"
+                              onClick={handleAddQuestion}
+                              style={{ flex: 1 }}
+                            >
+                              <span className="add-icon">+</span>
+                              {t('forms.add_question')}
+                            </button>
+                            <button
+                              className="btn-add-disclaimer"
+                              onClick={handleAddDisclaimer}
+                              style={{ flex: 1 }}
+                            >
+                              <span className="add-icon">+</span>
+                              {t('forms.add_disclaimer')}
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1041,54 +1327,85 @@ export const FormLibrary = () => {
                         {selectedForm.questions.length === 0 ? (
                           <p className="form-desc" style={{ textAlign: 'center', padding: 'var(--spacing-xl)' }}>{t('forms.no_questions')}</p>
                         ) : (
-                          selectedForm.questions.filter(q => evaluateCondition(q.condition)).map(q => (
-                            <div key={q.id} className="preview-question">
-                              <label className="question-label">
-
-                                {`${questionNumberMap.get(q.id) || ''}.- ${q.label}`.trim()} {q.required && <span className="req">*</span>}
-                              </label>
-
-                              {q.type === 'text' && <input type="text" className="form-input" placeholder={t('forms.types.text')} value={previewAnswers[q.id] || ''} onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} />}
-                              {q.type === 'textarea' && <textarea className="form-input textarea" placeholder={t('forms.types.textarea')} value={previewAnswers[q.id] || ''} onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} />}
-                              {q.type === 'number' && <input type="number" className="form-input" placeholder="0" value={previewAnswers[q.id] || ''} onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} />}
-
-                              {q.type === 'dropdown' && (
-                                <select className="form-input" value={previewAnswers[q.id] || ''} onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}>
-                                  <option value="">{t('common.select_option')}</option>
-                                  {(q.options || []).map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
-                                </select>
-                              )}
-
-                              {q.type === 'radio' && (
-                                <div className="options-group">
-                                  {(q.options || []).map((opt, i) => (
-                                    <label key={i} className="option-label">
-                                      <input type="radio" name={`preview-radio-${q.id}`} value={opt} checked={previewAnswers[q.id] === opt} onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} /> {opt}
-                                    </label>
-                                  ))}
+                          selectedForm.questions.filter(q => evaluateCondition(q.condition)).map(q => {
+                            if (q.type === 'disclaimer') {
+                              return (
+                                <div key={q.id} className="preview-disclaimer" style={{ marginBottom: 'var(--spacing-xl)', borderBottom: '1px solid var(--panel-border)', paddingBottom: 'var(--spacing-md)' }}>
+                                  <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 'bold', margin: '0 0 var(--spacing-sm) 0', color: 'var(--text-main)' }}>
+                                    {q.label}
+                                  </h3>
+                                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap' }}>
+                                    {q.description}
+                                  </p>
                                 </div>
-                              )}
+                              );
+                            }
 
-                              {q.type === 'checkbox' && (
-                                <div className="options-group">
-                                  {(q.options || []).map((opt, i) => {
-                                    const checkedArray = previewAnswers[q.id] || [];
-                                    return (
+                            return (
+                              <div key={q.id} className="preview-question">
+                                <label className="question-label">
+                                  {`${questionNumberMap.get(q.id) || ''}.- ${q.label}`.trim()} {q.required && <span className="req">*</span>}
+                                </label>
+
+                                {q.type === 'text' && (
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder={t('forms.types.text')}
+                                    value={previewAnswers[q.id] || ''}
+                                    maxLength={200}
+                                    onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                  />
+                                )}
+                                {q.type === 'textarea' && (
+                                  <textarea
+                                    className="form-input textarea"
+                                    placeholder={t('forms.types.textarea')}
+                                    value={previewAnswers[q.id] || ''}
+                                    maxLength={1000}
+                                    onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                  />
+                                )}
+                                {q.type === 'number' && <input type="number" className="form-input" placeholder="0" value={previewAnswers[q.id] || ''} onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} />}
+
+                                {q.type === 'dropdown' && (
+                                  <select className="form-input" value={previewAnswers[q.id] || ''} onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}>
+                                    <option value="">{t('common.select_option')}</option>
+                                    {(q.options || []).map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+                                  </select>
+                                )}
+
+                                {q.type === 'radio' && (
+                                  <div className="options-group">
+                                    {(q.options || []).map((opt, i) => (
                                       <label key={i} className="option-label">
-                                        <input type="checkbox" value={opt} checked={checkedArray.includes(opt)} onChange={(e) => {
-                                          const isChecked = e.target.checked;
-                                          setPreviewAnswers(prev => {
-                                            const current = prev[q.id] || [];
-                                            return { ...prev, [q.id]: isChecked ? [...current, opt] : current.filter((x: string) => x !== opt) };
-                                          });
-                                        }} /> {opt}
+                                        <input type="radio" name={`preview-radio-${q.id}`} value={opt} checked={previewAnswers[q.id] === opt} onChange={(e) => setPreviewAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} /> {opt}
                                       </label>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          ))
+                                    ))}
+                                  </div>
+                                )}
+
+                                {q.type === 'checkbox' && (
+                                  <div className="options-group">
+                                    {(q.options || []).map((opt, i) => {
+                                      const checkedArray = previewAnswers[q.id] || [];
+                                      return (
+                                        <label key={i} className="option-label">
+                                          <input type="checkbox" value={opt} checked={checkedArray.includes(opt)} onChange={(e) => {
+                                            const isChecked = e.target.checked;
+                                            setPreviewAnswers(prev => {
+                                              const current = prev[q.id] || [];
+                                              return { ...prev, [q.id]: isChecked ? [...current, opt] : current.filter((x: string) => x !== opt) };
+                                            });
+                                          }} /> {opt}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
                         )}
 
                       </div>

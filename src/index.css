@@ -1049,27 +1049,171 @@ body {
 }
 
 .form-list-item {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--bg-dark);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--panel-border);
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background-color 0.2s, padding 0.3s, justify-content 0.3s;
+  gap: var(--spacing-sm);
+  transition: background-color 0.2s, border-left 0.2s;
+  border-left: 3px solid transparent;
 }
 
 .library-sidebar-min .form-list-item {
   padding: var(--spacing-md) 0;
   justify-content: center;
+  border-left: none;
 }
 
 .form-list-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--glass-hover);
 }
 
 .form-list-item.active {
-  background-color: rgba(59, 130, 246, 0.15);
+  background-color: rgba(37, 99, 235, 0.08); /* Transparent blue for active */
   border-left: 3px solid var(--primary);
+}
+
+.light-theme .form-list-item.active {
+  background-color: rgba(30, 64, 175, 0.06); /* High-trust bank navy transparent active */
+}
+
+/* Sidebar List Item Elements */
+.form-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.25s;
+}
+
+.form-item-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.form-item-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-item-subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.form-delete-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.form-list-item:hover .form-delete-btn,
+.form-list-item.active .form-delete-btn {
+  opacity: 0.7;
+}
+
+.form-delete-btn:hover {
+  color: var(--danger) !important;
+  opacity: 1 !important;
+}
+
+/* Disclaimer badge */
+.badge-disclaimer {
+  background-color: rgba(6, 182, 212, 0.15); /* Teal tint */
+  color: #0891b2;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.light-theme .badge-disclaimer {
+  background-color: rgba(13, 148, 136, 0.1);
+  color: #0f766e;
+  border-color: rgba(13, 148, 136, 0.25);
+}
+
+/* Custom styling for disclaimer cards and buttons */
+.question-editor-card.disclaimer-card {
+  border-left: 4px solid #0f766e !important;
+}
+
+.question-editor-card.disclaimer-card .card-body {
+  display: block !important;
+  width: 100% !important;
+}
+
+.btn-add-disclaimer {
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: transparent;
+  border: 1px dashed var(--panel-border);
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-add-disclaimer:hover {
+  background-color: rgb(15 118 110 / 0.05);
+  border-color: #0f766e;
+  color: #0f766e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px -2px rgba(15, 118, 110, 0.3);
+}
+
+/* Custom styling for conditional question cards */
+.question-editor-card.conditional-card {
+  margin-left: 15px !important;
+  border-left: 4px solid #8E319C !important;
+  width: calc(100% - 15px) !important;
+  max-width: calc(100% - 15px) !important;
+}
+
+.question-editor-card.conditional-card .question-number-chip {
+  background-color: #8E319C !important;
+  color: white !important;
+}
+
+.btn-add-disclaimer:active {
+  transform: translateY(0);
+}
+
+.btn-add-disclaimer .add-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  background-color: var(--panel-border);
+  color: var(--text-muted);
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+  transition: all 0.3s ease;
+}
+
+.btn-add-disclaimer:hover .add-icon {
+  background-color: #0f766e;
+  color: white;
+  transform: rotate(90deg);
 }
 
 .library-sidebar-min .form-list-item.active {

@@ -56,7 +56,7 @@ const estimateNodeHeight = (node: Node) => {
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: direction, nodesep: 250, ranksep: 90 });
+  dagreGraph.setGraph({ rankdir: direction, nodesep: 250, ranksep: 50 });
 
   nodes.forEach((node) => {
     const estimatedHeight = estimateNodeHeight(node);

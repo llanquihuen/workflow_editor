@@ -1,4 +1,4 @@
-export type QuestionType = 'text' | 'number' | 'dropdown' | 'checkbox' | 'radio' | 'textarea';
+export type QuestionType = 'text' | 'number' | 'dropdown' | 'checkbox' | 'radio' | 'textarea' | 'disclaimer';
 
 export interface FormQuestionCondition {
   formId?: string; // Opcional: si está presente, la pregunta origen pertenece a otro formulario en el workflow
@@ -11,6 +11,7 @@ export interface FormQuestion {
   id: string;
   type: QuestionType;
   label: string;
+  description?: string; // Contenido del descargo / disclaimer text
   required?: boolean;
   isSensitive?: boolean; // Indica si la pregunta contiene información sensible
   options?: string[]; // Opciones para dropdown, radio, etc.

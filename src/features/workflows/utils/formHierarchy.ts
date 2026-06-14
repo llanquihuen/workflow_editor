@@ -20,8 +20,11 @@ export const getQuestionNumberMap = (questions: FormQuestion[]) => {
   });
 
   const assignNumbers = (currentQuestions: FormQuestion[], parentNumber?: string, chain = new Set<string>()) => {
-    currentQuestions.forEach((question, index) => {
-      const currentNumber = parentNumber ? `${parentNumber}.${index + 1}` : `${index + 1}`;
+    let indexOffset = 0;
+    currentQuestions.forEach((question) => {
+      if (question.type === 'disclaimer') return;
+      indexOffset++;
+      const currentNumber = parentNumber ? `${parentNumber}.${indexOffset}` : `${indexOffset}`;
       numberMap.set(question.id, currentNumber);
 
       if (chain.has(question.id)) return;
@@ -31,11 +34,36 @@ export const getQuestionNumberMap = (questions: FormQuestion[]) => {
     });
   };
 
-  assignNumbers(topLevelQuestions);
+  // Assign numbers to standard questions
+  let standardTopLevelCount = 0;
+  topLevelQuestions.forEach((question) => {
+    if (question.type === 'disclaimer') return;
+    standardTopLevelCount++;
+    const currentNumber = `${standardTopLevelCount}`;
+    numberMap.set(question.id, currentNumber);
 
+    const children = childrenByParentId.get(question.id) || [];
+    assignNumbers(children, currentNumber);
+  });
+
+  // Assign numbers to disclaimers sequentially
+  let disclaimerCount = 0;
+  questions.forEach((question) => {
+    if (question.type === 'disclaimer') {
+      disclaimerCount++;
+      numberMap.set(question.id, `D${disclaimerCount}`);
+    }
+  });
+
+  // Fallback for any orphans
   questions.forEach((question) => {
     if (!numberMap.has(question.id)) {
-      numberMap.set(question.id, `${numberMap.size + 1}`);
+      if (question.type === 'disclaimer') {
+        disclaimerCount++;
+        numberMap.set(question.id, `D${disclaimerCount}`);
+      } else {
+        numberMap.set(question.id, `${numberMap.size + 1}`);
+      }
     }
   });
 
