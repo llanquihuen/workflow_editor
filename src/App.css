@@ -4,23 +4,23 @@
   justify-content: center;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-  font-family: 'Inter', sans-serif;
-  color: #f8fafc;
+  background: linear-gradient(135deg, var(--citi-ink-blue-950) 0%, #070c17 100%);
+  font-family: var(--citi-sans);
+  color: var(--text-main);
 }
 .secure-login-layout.light-theme {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  color: #0f172a;
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+  color: var(--text-main);
 }
 .login-glass-card {
   background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  padding: 40px;
+  padding: 2.5rem;
   width: 100%;
-  max-width: 440px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  max-width: 27.5rem;
+  box-shadow: 0 1.25rem 2.5rem rgba(0, 0, 0, 0.3);
 }
 .light-theme .login-glass-card {
   background: rgba(255, 255, 255, 0.85);
@@ -48,7 +48,7 @@
 .login-header h2 {
   font-size: var(--text-xl);
   letter-spacing: 2px;
-  margin: 0 0 6px 0;
+  margin: 0 0 0.375rem 0;
   font-weight: 700;
 }
 .login-header p {
@@ -64,7 +64,7 @@
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
 }
 .form-group label {
   font-size: var(--text-xs);
@@ -78,7 +78,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #f8fafc;
   border-radius: 8px;
-  padding: var(--spacing-md) 14px;
+  padding: var(--spacing-md) 0.875rem;
   font-size: var(--text-sm);
   transition: all 0.2s;
 }
@@ -93,10 +93,10 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 .btn-login-submit {
-  background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);
+  background: linear-gradient(90deg, var(--citi-blue-800) 0%, var(--citi-blue-600) 100%);
   border: none;
   color: white;
-  padding: 14px;
+  padding: 0.875rem;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
@@ -118,7 +118,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  margin-top: -10px;
+  margin-top: -0.625rem;
 }
 .light-theme .btn-offline-mode {
   border: 1px solid rgba(0, 0, 0, 0.15);
@@ -137,12 +137,12 @@
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #f87171;
-  padding: 10px var(--spacing-md);
+  padding: 0.625rem var(--spacing-md);
   border-radius: 6px;
   font-size: var(--text-sm);
 }
 .login-seeder-notice {
-  margin-top: 30px;
+  margin-top: 1.875rem;
   padding-top: var(--spacing-xl);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: var(--text-sm);
@@ -154,13 +154,13 @@
 .notice-badge {
   background: rgba(34, 197, 94, 0.15);
   color: #4ade80;
-  padding: 2px 6px;
+  padding: 0.125rem 0.375rem;
   border-radius: 4px;
   font-weight: 600;
   font-size: var(--text-xs);
   text-transform: uppercase;
   display: inline-block;
-  margin-bottom: 6px;
+  margin-bottom: 0.375rem;
 }
 @keyframes pulse {
   0% { transform: scale(1); }
@@ -171,20 +171,20 @@
 /* App Layout Styles */
 
         .active-ver-badge {
-          background: rgba(99, 102, 241, 0.15);
-          color: #818cf8;
-          padding: 2px 8px;
+          background: rgba(37, 91, 227, 0.15);
+          color: var(--primary);
+          padding: 0.125rem 0.5rem;
           border-radius: 99px;
           font-size: 11px;
           font-weight: 600;
-          margin-left: 8px;
+          margin-left: 0.5rem;
         }
         .bank-actions-group {
           display: flex;
-          gap: 10px;
-          margin-right: 15px;
+          gap: 0.625rem;
+          margin-right: 0.9375rem;
           border-right: 1px solid rgba(255, 255, 255, 0.08);
-          padding-right: 15px;
+          padding-right: 0.9375rem;
         }
         .light-theme .bank-actions-group {
           border-right: 1px solid rgba(0, 0, 0, 0.08);
@@ -193,7 +193,7 @@
           background: #0c9a6e;
           border: none;
           color: white;
-          padding: 8px 14px;
+          padding: 0.5rem 0.875rem;
           border-radius: 6px;
           font-size: 12px;
           font-weight: 600;
@@ -210,7 +210,7 @@
           background: rgba(148, 163, 184, 0.1);
           border: 1px solid rgba(255, 255, 255, 0.08);
           color: var(--text-main);
-          padding: 8px 14px;
+          padding: 0.5rem 0.875rem;
           border-radius: 6px;
           font-size: 12px;
           font-weight: 600;
@@ -223,14 +223,14 @@
           border: 1px solid rgba(0, 0, 0, 0.08);
         }
         .btn-toggle-history:hover, .btn-toggle-history.active {
-          background: rgba(99, 102, 241, 0.15);
-          color: #818cf8;
-          border-color: rgba(99, 102, 241, 0.3);
+          background: rgba(37, 91, 227, 0.15);
+          color: var(--primary);
+          border-color: rgba(37, 91, 227, 0.3);
         }
         
         /* History panel styles */
         .version-history-pane {
-          padding: 20px;
+          padding: 1.25rem;
           background: var(--bg-panel);
           height: 100%;
           border-right: 1px solid rgba(255, 255, 255, 0.05);
@@ -239,18 +239,18 @@
           overflow-y: auto;
         }
         .version-history-pane h3 {
-          margin: 0 0 4px 0;
-          font-size: 16px;
+          margin: 0 0 0.25rem 0;
+          font-size: 1rem;
         }
         .pane-subtitle {
-          font-size: 11px;
+          font-size: 0.6875rem;
           color: #94a3b8;
-          margin: 0 0 20px 0;
+          margin: 0 0 1.25rem 0;
         }
         .no-history-alert {
           background: rgba(148, 163, 184, 0.08);
           color: #94a3b8;
-          padding: 12px;
+          padding: 0.75rem;
           border-radius: 6px;
           font-size: 12px;
           text-align: center;
@@ -258,16 +258,16 @@
         .history-timeline {
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 0.875rem;
         }
         .history-item {
           background: rgba(15, 23, 42, 0.3);
           border: 1px solid rgba(255, 255, 255, 0.05);
           border-radius: 8px;
-          padding: 12px;
+          padding: 0.75rem;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 0.5rem;
         }
         .light-theme .history-item {
           background: rgba(255, 255, 255, 0.5);
@@ -281,7 +281,7 @@
         .ver-tag {
           background: rgba(99, 102, 241, 0.15);
           color: #818cf8;
-          padding: 2px 6px;
+          padding: 0.125rem 0.375rem;
           border-radius: 4px;
           font-size: 10px;
           font-weight: 600;
@@ -302,9 +302,9 @@
           align-items: center;
           font-size: 10px;
           color: #94a3b8;
-          margin-top: 4px;
+          margin-top: 0.25rem;
           border-top: 1px solid rgba(255, 255, 255, 0.05);
-          padding-top: 8px;
+          padding-top: 0.5rem;
         }
         .light-theme .item-footer {
           border-top: 1px solid rgba(0, 0, 0, 0.05);
@@ -313,7 +313,7 @@
           background: rgba(245, 158, 11, 0.15);
           color: #fbbf24;
           border: 1px solid rgba(245, 158, 11, 0.3);
-          padding: 2px 8px;
+          padding: 0.125rem 0.5rem;
           border-radius: 4px;
           cursor: pointer;
           font-size: 10px;
@@ -341,13 +341,13 @@
           font-family: 'Inter', sans-serif;
         }
         .modal-glass-card {
-          background: #1e1b4b;
+          background: var(--citi-ink-blue-950);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 12px;
-          padding: 30px;
+          padding: 1.875rem;
           width: 100%;
-          max-width: 480px;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+          max-width: 30rem;
+          box-shadow: 0 1.25rem 2.5rem rgba(0, 0, 0, 0.4);
           color: white;
         }
         .light-theme .modal-glass-card {
@@ -357,19 +357,19 @@
           color: #0f172a;
         }
         .modal-glass-card h3 {
-          margin: 0 0 10px 0;
+          margin: 0 0 0.625rem 0;
           font-size: 18px;
         }
         .modal-glass-card p {
           font-size: 13px;
           color: #94a3b8;
-          margin: 0 0 20px 0;
+          margin: 0 0 1.25rem 0;
         }
         .form-group-modal {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          margin-bottom: 24px;
+          gap: 0.5rem;
+          margin-bottom: 1.5rem;
         }
         .form-group-modal label {
           font-size: 11px;
@@ -383,9 +383,9 @@
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: white;
           border-radius: 6px;
-          padding: 10px 12px;
+          padding: 0.625rem 0.75rem;
           font-size: 14px;
-          min-height: 80px;
+          min-height: 5rem;
           resize: vertical;
           font-family: inherit;
         }
@@ -401,13 +401,13 @@
         .modal-actions {
           display: flex;
           justify-content: flex-end;
-          gap: 12px;
+          gap: 0.75rem;
         }
         .btn-modal-cancel {
           background: transparent;
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: #cbd5e1;
-          padding: 8px 16px;
+          padding: 0.5rem 1rem;
           border-radius: 6px;
           font-size: 13px;
           font-weight: 600;
@@ -424,7 +424,7 @@
           background: linear-gradient(90deg, #10b981 0%, #059669 100%);
           border: none;
           color: white;
-          padding: 10px 20px;
+          padding: 0.625rem 1.25rem;
           border-radius: 6px;
           font-size: 13px;
           font-weight: 600;

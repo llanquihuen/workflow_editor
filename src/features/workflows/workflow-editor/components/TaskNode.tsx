@@ -24,12 +24,12 @@ const parseUser = (fullName: string) => {
 
 const getRandomColor = (id: string) => {
   const colors = [
-    'linear-gradient(135deg, #3b82f6, #1d4ed8)', // Blue
-    'linear-gradient(135deg, #10b981, #047857)', // Green
-    'linear-gradient(135deg, #8b5cf6, #5b21b6)', // Purple
+    'linear-gradient(135deg, var(--citi-blue-600), var(--citi-blue-800))', // Blue
+    'linear-gradient(135deg, var(--success), var(--forest-700))', // Green
+    'linear-gradient(135deg, var(--purple-700), #5b21b6)', // Purple
     'linear-gradient(135deg, #ec4899, #be185d)', // Pink
-    'linear-gradient(135deg, #f59e0b, #b45309)', // Amber
-    'linear-gradient(135deg, #06b6d4, #0891b2)', // Cyan
+    'linear-gradient(135deg, var(--tan-bright-400), #b45309)', // Amber
+    'linear-gradient(135deg, var(--teal-600), #0891b2)', // Cyan
   ];
   let sum = 0;
   for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i);
@@ -193,9 +193,9 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
                     </div>
                     {overwriteConditionsInfo.map((info, idx) => (
                       <div key={idx} style={{ marginBottom: idx < overwriteConditionsInfo.length - 1 ? '8px' : 0 }}>
-                        <div style={{ fontWeight: '600', fontSize: '10.5px', color: 'var(--primary-light, #93c5fd)' }}>
-                          {info.conditionName}
-                        </div>
+                        {/*<div style={{ fontWeight: '600', fontSize: '10.5px', color: 'var(--primary-light, #93c5fd)' }}>*/}
+                        {/*  {info.conditionName}*/}
+                        {/*</div>*/}
                         <div style={{ fontSize: '9.5px', opacity: 0.85, margin: '2px 0' }}>
                           <strong>{t('tasks.tooltip_rule_label', { defaultValue: 'Rule:' })}</strong> {info.rulesDescription}
                         </div>

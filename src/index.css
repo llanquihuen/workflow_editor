@@ -1,22 +1,70 @@
-:root {
-  --bg-dark: #070c17; /* Dark metallic navy */
-  --panel-bg: #0f182a; /* Deep secure banking navy */
-  --panel-border: #1e293b; /* Premium slate border */
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --primary: #2563eb; /* Sapphire bank blue */
-  --primary-hover: #1d4ed8; /* Deep bank blue */
-  --danger: #ef4444;
-  --success: #10b981;
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
-  --shadow-color: rgb(0 0 0 / 0.15);
+:root {
+  --citi-blue-50: #F0F6FE;
+  --citi-blue-100: #E8F0FE;
+  --citi-blue-600: #255BE3;
+  --citi-blue-800: #233FAA;
+  --citi-ink-blue-950: #0F1632;
+  --mahogany-800: #A70D0D;
+  --forest-700: #2A6B3C;
+  --tan-bright-400: #FAB728;
+  --purple-700: #8E319C;
+  --teal-600: #0E7490;
+  --white: #FFFFFF;
+  --gray-25: #F7FAFB;
+  --gray-50: #F0F5F7;
+  --gray-100: #E6EBED;
+  --gray-200: #D3DADD;
+  --gray-300: #BCC5C9;
+  --gray-400: #A4ACAF;
+  --gray-475: #808A8E;
+  --gray-600: #5E676B;
+  --gray-700: #4D5457;
+
+  /* Global configurations from photo */
+  --citi-sans: "Citi Sans Text Regular", "CitiSans-TextRegular", "Citi-Sans-Text-Regular", "Citi Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --citi-sans-display: "Citi Sans Display", sans-serif;
+  --mono: 'IBM Plex Mono', 'Courier New', monospace;
+
+  --fs-2xs: 8.5px; --fs-xs: 10px; --fs-sm: 11px; --fs-md: 12px;
+  --fs-lg: 13.5px; --fs-xl: 15px; --fs-h0: 17px;
+  --sp4: 3.4px; --sp6: 5.1px; --sp8: 6.8px; --sp10: 8.5px; --sp12: 10.2px;
+  --sp16: 13.6px; --sp20: 17px; --sp24: 20.4px; --sp32: 27.2px; --sp48: 40.8px;
+  --r-sm: 3px; --r-md: 6px; --r-lg: 10px; --r-xl: 14px; --r-pill: 999px;
+  --dur-fast: 150ms; --dur-med: 300ms;
+  --ease-out: cubic-bezier(0,0,.23,.99);
+  --ease-inout: cubic-bezier(.62,.28,.23,.99);
+
+  --header-h: 47.6px;
+  --topbar-h: 44.2px;
+  --fl-sidebar-w: 238px;
+  --fl-config-w: 442px;
+
+  --shadow_raised: 0 1px 3px rgba(15,22,50,0.08), 0 1px 2px rgba(15,22,50,0.04);
+  --shadow_overlay: 0 4px 16px rgba(15,22,50,0.12), 0 2px 6px rgba(15,22,50,0.08);
+  --shadow_popup: 0 8px 32px rgba(15,22,50,0.18), 0 2px 8px rgba(15,22,50,0.10);
+  --shadow_color_focus: rgba(37,91,227,0.3);
+
+  /* Dark Theme values (using citi brand elements) */
+  --bg-dark: #0a0f24;
+  --panel-bg: var(--citi-ink-blue-950);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --text-main: var(--gray-25);
+  --text-muted: var(--gray-400);
+  --primary: var(--citi-blue-600);
+  --primary-hover: var(--citi-blue-800);
+  --danger: var(--mahogany-800);
+  --success: var(--forest-700);
+
+  --shadow-color: rgba(0, 0, 0, 0.35);
   --glass-bg: rgba(0, 0, 0, 0.25);
   --glass-hover: rgba(255, 255, 255, 0.08);
   --input-focus-bg: rgba(0, 0, 0, 0.35);
-  --edge-stroke: #334155;
+  --edge-stroke: var(--gray-600);
   --node-bg: var(--panel-bg);
 
-  /* Typography System */
+  /* Typography System fallback mapping */
   --text-xs: 0.7rem;
   --text-sm: 0.8rem;
   --text-base: 0.875rem;
@@ -24,37 +72,42 @@
   --text-lg: 1.1rem;
   --text-xl: 1.25rem;
 
-  /* Spacing System */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 20px;
+  /* Spacing System fallback mapping */
+  --spacing-xs: 3.4px;
+  --spacing-sm: 6.8px;
+  --spacing-md: 10.2px;
+  --spacing-lg: 13.6px;
+  --spacing-xl: 17px;
 }
 
 .light-theme {
-  --bg-dark: #f4f7fa; /* Elegant corporate grey-blue background */
-  --panel-bg: #ffffff; /* Crisp white panel */
-  --panel-border: #cbd5e1; /* Sharp clean borders */
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --primary: #1e40af; /* High-trust bank navy/blue */
-  --primary-hover: #1d3557; /* Rich dark navy hover */
-  --danger: #dc2626;
-  --success: #059669;
+  /* Light Theme values */
+  --bg-dark: var(--gray-50);
+  --panel-bg: var(--white);
+  --panel-border: var(--gray-200);
+  --text-main: var(--citi-ink-blue-950);
+  --text-muted: var(--gray-600);
+  --primary: var(--citi-blue-600);
+  --primary-hover: var(--citi-blue-800);
+  --danger: var(--mahogany-800);
+  --success: var(--forest-700);
 
-  --shadow-color: rgb(0 0 0 / 0.06);
-  --glass-bg: rgba(0, 0, 0, 0.04);
-  --glass-hover: rgba(0, 0, 0, 0.04);
-  --input-focus-bg: rgba(0, 0, 0, 0.04);
-  --edge-stroke: #94a3b8;
-  --node-bg: #ffffff;
+  --shadow-color: rgba(15, 22, 50, 0.08);
+  --glass-bg: rgba(15, 22, 50, 0.04);
+  --glass-hover: var(--gray-25);
+  --input-focus-bg: rgba(15, 22, 50, 0.02);
+  --edge-stroke: var(--gray-300);
+  --node-bg: var(--white);
 }
 
-* {
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+html {
+  font-size: 13.6px;
 }
 
 input, textarea, select, button {
@@ -62,10 +115,13 @@ input, textarea, select, button {
 }
 
 body {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--citi-sans);
   background-color: var(--bg-dark);
   color: var(--text-main);
+  line-height: 1.5;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -146,6 +202,7 @@ body {
   overflow-x: hidden;
   position: relative;
   min-height: 0;
+  background-color: var(--bg-dark);
   /* Necesario para que el scroll funcione en flexbox */
 }
 
@@ -1201,12 +1258,14 @@ body {
   width: 28px;
   height: 28px;
   display: flex;
+  align-items: center;
   justify-content: center;
   background-color: var(--panel-border);
   color: var(--text-muted);
   border-radius: 50%;
   font-size: 1.4rem;
   line-height: 1;
+  padding-bottom: 2px;
   transition: all 0.3s ease;
 }
 
@@ -1626,12 +1685,14 @@ body {
   width: 28px;
   height: 28px;
   display: flex;
+  align-items: center;
   justify-content: center;
   background-color: var(--panel-border);
   color: var(--text-muted);
   border-radius: 50%;
   font-size: 1.4rem;
   line-height: 1;
+  padding-bottom: 2px;
   transition: all 0.3s ease;
 }
 
@@ -1730,13 +1791,13 @@ body {
   background-color: var(--bg-dark);
   color: var(--text-main);
   overflow: hidden;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--citi-sans);
 }
 
 /* Sidebar a la izquierda */
 .sidebar-aside {
   width: 65px;
-  background-color: #0f172a; /* Color oscuro persistente ultra-premium */
+  background-color: var(--citi-ink-blue-950); /* Color oscuro persistente ultra-premium */
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
@@ -1751,13 +1812,13 @@ body {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  background: linear-gradient(135deg, var(--citi-blue-800), var(--citi-blue-600));
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 40px;
   color: white;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px rgba(37, 91, 227, 0.3);
 }
 
 .logo-lightning {
@@ -1810,8 +1871,8 @@ body {
 }
 
 .sidebar-tab.active {
-  background-color: rgba(37, 99, 235, 0.15);
-  color: #60a5fa;
+  background-color: rgba(37, 91, 227, 0.15);
+  color: var(--citi-blue-50);
 }
 
 .sidebar-tab.active::after {
@@ -1821,7 +1882,7 @@ body {
   top: 18px;
   height: 20px;
   width: 4px;
-  background-color: #2563eb;
+  background-color: var(--primary);
   border-radius: 0 4px 4px 0;
 }
 
