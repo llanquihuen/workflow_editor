@@ -135,7 +135,9 @@
     "title": "Visual Canvas",
     "auto_layout": "Auto-Layout",
     "if": "If",
-    "skip_if": "Skip if"
+    "skip_if": "Skip if",
+    "bypassed_flow": "Bypassed",
+    "skipped": "Skipped"
   },
   "tasks": {
     "editor_title": "Task Editor",
@@ -238,10 +240,24 @@
     "select_question_btn": "Select",
     "selected_condition_breadcrumb": "Configured condition:",
     "click_to_configure": "Configure Condition...",
+    "overwrite_condition_canvas": "Overwritable by condition",
+    "overwrite_condition_canvas_tooltip": "Approvers can be overwritten if condition is met",
     "clear_condition_btn": "Clear Condition",
     "task_prefix": "TASK ",
     "form_prefix": "FORM ",
-    "question_prefix": "Q"
+    "question_prefix": "Q",
+    "conditions_title": "Conditions",
+    "add_condition": "Add Condition",
+    "condition_name": "Condition Name",
+    "if_condition_met": "IF CONDITION IS MET, THEN:",
+    "skip_task_opt": "Skip",
+    "skip_task_opt_desc": "This step is skipped: flow continues to the next step.",
+    "overwrite_approver_opt": "Overwrite Approver",
+    "overwrite_approver_opt_desc": "Replace the step's approvers with the ones defined below.",
+    "forced_approvers_title": "FORCED APPROVERS FOR THIS CONDITION",
+    "search_forced_approver_placeholder": "Search approver to add...",
+    "sources_previous_steps": "Sources: forms from previous steps",
+    "add_rule": "+ Add Rule"
   },
   "dashboard": {
     "title": "Workflows",

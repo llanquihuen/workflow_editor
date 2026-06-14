@@ -26,17 +26,31 @@
       "approverIds": [
         "usr-8"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-travel-estimates",
-        "questionId": "q-travel-type",
-        "operator": "equals",
-        "value": "International"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 200
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-aytd30t7v",
+          "name": "Rule: International Cash Advance & Insurance Activation",
+          "rules": [
+            {
+              "id": "rule-t6cty5hsa",
+              "connective": "IF",
+              "formId": "form-travel-estimates",
+              "questionId": "q-travel-type",
+              "operator": "equals",
+              "value": "International"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-19",
+            "usr-17"
+          ]
+        }
+      ]
     },
     {
       "id": "task-3",
@@ -48,17 +62,31 @@
       "approverIds": [
         "usr-10"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-travel-estimates",
-        "questionId": "q-family-travel",
-        "operator": "equals",
-        "value": "Yes"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 350
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-3dxhjsajz",
+          "name": "Rule: Companion Policy & Compliance Activation",
+          "rules": [
+            {
+              "id": "rule-2hh050tw1",
+              "connective": "IF",
+              "formId": "form-travel-estimates",
+              "questionId": "q-family-travel",
+              "operator": "equals",
+              "value": "Yes"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-20",
+            "usr-18"
+          ]
+        }
+      ]
     },
     {
       "id": "task-4",
@@ -71,17 +99,31 @@
         "usr-2",
         "usr-17"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-travel-estimates",
-        "questionId": "q-est-cost",
-        "operator": "greater_than",
-        "value": "5000"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 500
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-m9dsq1j96",
+          "name": "Rule: High Expense Audit & Business Case Activation",
+          "rules": [
+            {
+              "id": "rule-xg1yodybo",
+              "connective": "IF",
+              "formId": "form-travel-estimates",
+              "questionId": "q-est-cost",
+              "operator": "greater_than",
+              "value": "5000"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-12",
+            "usr-15"
+          ]
+        }
+      ]
     },
     {
       "id": "task-5",

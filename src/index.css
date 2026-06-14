@@ -1128,12 +1128,59 @@ body {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
+.custom-task-node.bypassed {
+  border: 1.5px dashed var(--text-muted) !important;
+  box-shadow: none;
+}
+
+.custom-task-node.bypassed.selected {
+  border: 2px dashed var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
 .custom-task-node:hover {
   border-color: #475569;
 }
 
 .custom-task-node.selected:hover {
   border-color: var(--primary);
+}
+
+/* --- Clickable Edge Hover Effects (Simulator) --- */
+.react-flow__edge.clickable-flow-edge {
+  cursor: pointer !important;
+}
+
+.react-flow__edge.clickable-flow-edge * {
+  cursor: pointer !important;
+}
+
+.react-flow__edge.clickable-flow-edge .react-flow__edge-path {
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
+}
+
+.react-flow__edge.clickable-flow-edge:hover .react-flow__edge-path {
+  stroke-width: 4px !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 3px rgba(37, 99, 235, 0.4));
+}
+
+.react-flow__edge.clickable-flow-edge .react-flow__edge-textwrapper rect {
+  transition: fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+}
+
+.react-flow__edge.clickable-flow-edge:hover .react-flow__edge-textwrapper rect {
+  fill: var(--primary) !important;
+  stroke: var(--primary) !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25)) !important;
+}
+
+.react-flow__edge.clickable-flow-edge .react-flow__edge-textwrapper text {
+  transition: fill 0.2s ease, font-weight 0.2s ease;
+}
+
+.react-flow__edge.clickable-flow-edge:hover .react-flow__edge-textwrapper text {
+  fill: #ffffff !important;
 }
 
 .node-header {
@@ -2537,4 +2584,153 @@ body {
 .btn-premium-action:active {
   transform: translateY(0.5px);
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+}
+
+/* --- Premium Outline Button --- */
+.btn-premium-outline {
+  background: transparent;
+  color: var(--text-main) !important;
+  border: 1px solid var(--panel-border);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: 6px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  text-transform: none;
+  line-height: 1.2;
+}
+
+.btn-premium-outline:hover {
+  background: var(--glass-hover);
+  border-color: var(--text-muted);
+}
+
+.btn-premium-outline:active {
+  transform: translateY(0.5px);
+}
+
+/* --- Approver Avatar Stack on Task Node --- */
+.approver-avatar-stack {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.approver-node-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  border: 1.5px solid var(--panel-bg);
+  margin-right: -6px; /* Overlap effect */
+  transition: transform 0.15s ease, z-index 0.15s ease;
+  z-index: 1;
+}
+
+.approver-node-avatar:hover {
+  transform: translateY(-2px);
+  z-index: 10;
+}
+
+/* Tooltip styles */
+.approver-node-avatar .avatar-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  width: 160px;
+  background-color: #0f172a; /* Slate 900 */
+  color: #f8fafc;
+  text-align: left;
+  border-radius: 8px;
+  padding: 8px 10px;
+  position: absolute;
+  z-index: 100;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+.light-theme .approver-node-avatar .avatar-tooltip {
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.approver-node-avatar:hover .avatar-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* Overwrite indication on Task Node */
+.overwrite-indicator-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background-color: rgba(239, 68, 68, 0.08);
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+  width: fit-content;
+  cursor: help;
+}
+
+.light-theme .overwrite-indicator-badge {
+  background-color: rgba(239, 68, 68, 0.04);
+}
+
+/* Badge tooltip styles */
+.overwrite-indicator-badge .badge-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  width: 220px;
+  background-color: #0f172a; /* Slate 900 */
+  color: #f8fafc;
+  text-align: left;
+  border-radius: 8px;
+  padding: 8px 10px;
+  position: absolute;
+  z-index: 100;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  white-space: normal; /* Allow text wrapping! */
+}
+
+.light-theme .overwrite-indicator-badge .badge-tooltip {
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.overwrite-indicator-badge:hover .badge-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
 }

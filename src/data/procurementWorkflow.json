@@ -45,17 +45,31 @@
         "usr-16",
         "usr-10"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-compliance-checks",
-        "questionId": "q-handles-pii",
-        "operator": "equals",
-        "value": "Yes"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 350
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-fb423357m",
+          "name": "Rule: GDPR & Data Privacy Audit Activation",
+          "rules": [
+            {
+              "id": "rule-z3ympjvza",
+              "connective": "IF",
+              "formId": "form-compliance-checks",
+              "questionId": "q-handles-pii",
+              "operator": "equals",
+              "value": "Yes"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-11",
+            "usr-14"
+          ]
+        }
+      ]
     },
     {
       "id": "task-4",
@@ -68,17 +82,27 @@
         "usr-12",
         "usr-13"
       ],
-      "skipCondition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-service-details",
-        "questionId": "q-purchase-category",
-        "operator": "equals",
-        "value": "Professional Services"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 500
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-vyzh4c255",
+          "name": "Rule: Skip Quality Assurance Compliance Audit",
+          "rules": [
+            {
+              "id": "rule-0kccykyi3",
+              "connective": "IF",
+              "formId": "form-service-details",
+              "questionId": "q-purchase-category",
+              "operator": "equals",
+              "value": "Professional Services"
+            }
+          ],
+          "type": "skip"
+        }
+      ]
     },
     {
       "id": "task-5",
@@ -91,17 +115,31 @@
         "usr-16",
         "usr-4"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-compliance-checks",
-        "questionId": "q-hosting-type",
-        "operator": "equals",
-        "value": "Cloud (SaaS)"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 650
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-cf0hrffa0",
+          "name": "Rule: SOC 2 Type II Security Review Activation",
+          "rules": [
+            {
+              "id": "rule-2yoym3sxe",
+              "connective": "IF",
+              "formId": "form-compliance-checks",
+              "questionId": "q-hosting-type",
+              "operator": "equals",
+              "value": "Cloud (SaaS)"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-13",
+            "usr-17"
+          ]
+        }
+      ]
     },
     {
       "id": "task-6",
@@ -130,17 +168,31 @@
         "usr-8",
         "usr-5"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-service-details",
-        "questionId": "q-purchase-category",
-        "operator": "equals",
-        "value": "Hardware Equipment"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 950
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-y19rd2j9g",
+          "name": "Rule: Hardware Delivery & Asset Tagging Activation",
+          "rules": [
+            {
+              "id": "rule-9syxvgz7x",
+              "connective": "IF",
+              "formId": "form-service-details",
+              "questionId": "q-purchase-category",
+              "operator": "equals",
+              "value": "Hardware Equipment"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-16",
+            "usr-19"
+          ]
+        }
+      ]
     },
     {
       "id": "task-8",
@@ -153,17 +205,27 @@
         "usr-13",
         "usr-12"
       ],
-      "skipCondition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-service-details",
-        "questionId": "q-purchase-category",
-        "operator": "equals",
-        "value": "Hardware Equipment"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 1100
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-rux3a8e9j",
+          "name": "Rule: Skip Trial Pilot Feedback Review",
+          "rules": [
+            {
+              "id": "rule-645p561ry",
+              "connective": "IF",
+              "formId": "form-service-details",
+              "questionId": "q-purchase-category",
+              "operator": "equals",
+              "value": "Hardware Equipment"
+            }
+          ],
+          "type": "skip"
+        }
+      ]
     },
     {
       "id": "task-9",
@@ -176,17 +238,31 @@
         "usr-7",
         "usr-19"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-service-details",
-        "questionId": "q-marketing-access",
-        "operator": "equals",
-        "value": "Yes"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 1250
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-163wqal4q",
+          "name": "Rule: Marketing Brand Campaign Integration Activation",
+          "rules": [
+            {
+              "id": "rule-tc6gfr5o9",
+              "connective": "IF",
+              "formId": "form-service-details",
+              "questionId": "q-marketing-access",
+              "operator": "equals",
+              "value": "Yes"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-17",
+            "usr-1"
+          ]
+        }
+      ]
     },
     {
       "id": "task-10",

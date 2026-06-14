@@ -46,6 +46,23 @@ export interface NotificationSettings {
   sendMailOtherParticipants: string[];
 }
 
+export interface ConditionRule {
+  id: string;
+  connective: 'IF' | 'AND' | 'OR';
+  formId: string;
+  questionId: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  value: string;
+}
+
+export interface TaskFlowCondition {
+  id: string;
+  name: string;
+  rules: ConditionRule[];
+  type: 'skip' | 'overwrite';
+  forcedApproverIds?: string[];
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -55,6 +72,7 @@ export interface Task {
   ui_metadata: UIMetadata;
   condition?: TaskCondition;
   skipCondition?: TaskCondition;
+  conditions?: TaskFlowCondition[];
   taskType?: 'normal' | 'dynamic' | 'iso' | 'system';
   allApproverRequired?: boolean;
   expirationDays?: number;

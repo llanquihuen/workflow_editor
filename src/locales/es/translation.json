@@ -135,7 +135,9 @@
     "title": "Canvas Visual",
     "auto_layout": "Auto-Ordenar",
     "if": "Si",
-    "skip_if": "Saltar si"
+    "skip_if": "Saltar si",
+    "bypassed_flow": "Bypass",
+    "skipped": "Omitida"
   },
   "tasks": {
     "editor_title": "Editor de Tareas",
@@ -238,10 +240,24 @@
     "select_question_btn": "Seleccionar",
     "selected_condition_breadcrumb": "Condición configurada:",
     "click_to_configure": "Configurar Condición...",
+    "overwrite_condition_canvas": "Sobreescribible por condición",
+    "overwrite_condition_canvas_tooltip": "Los aprobadores se pueden sobreescribir si se cumple una condición",
     "clear_condition_btn": "Eliminar Condición",
     "task_prefix": "TASK ",
     "form_prefix": "FORM ",
-    "question_prefix": "Q"
+    "question_prefix": "Q",
+    "conditions_title": "Condiciones",
+    "add_condition": "Añadir Condición",
+    "condition_name": "Nombre de la Condición",
+    "if_condition_met": "SI SE CUMPLE LA CONDICIÓN, ENTONCES:",
+    "skip_task_opt": "Omitir",
+    "skip_task_opt_desc": "Este paso se omite: el flujo continúa al siguiente paso.",
+    "overwrite_approver_opt": "Sobrescribir Aprobador",
+    "overwrite_approver_opt_desc": "Reemplaza los aprobadores del paso con los definidos abajo.",
+    "forced_approvers_title": "APROBADORES OBLIGATORIOS PARA ESTA CONDICIÓN",
+    "search_forced_approver_placeholder": "Buscar aprobador para añadir...",
+    "sources_previous_steps": "Orígenes: formularios de pasos anteriores",
+    "add_rule": "+ Añadir Regla"
   },
   "dashboard": {
     "title": "Workflows",

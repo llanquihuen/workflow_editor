@@ -3,7 +3,6 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { 
   IconCondition, 
-  IconSkip, 
   IconUp, 
   IconDown, 
   IconDelete, 
@@ -13,16 +12,43 @@ import {
   IconISO,
   IconLock
 } from '../../../../components/ui/Icons';
+import { DUMMY_USERS } from '../../../../utils/constants';
+
+const parseUser = (fullName: string) => {
+  const match = fullName.match(/(.+?)\s*\((.+?)\)/);
+  if (match) {
+    return { name: match[1].trim(), role: match[2].trim() };
+  }
+  return { name: fullName, role: '' };
+};
+
+const getRandomColor = (id: string) => {
+  const colors = [
+    'linear-gradient(135deg, #3b82f6, #1d4ed8)', // Blue
+    'linear-gradient(135deg, #10b981, #047857)', // Green
+    'linear-gradient(135deg, #8b5cf6, #5b21b6)', // Purple
+    'linear-gradient(135deg, #ec4899, #be185d)', // Pink
+    'linear-gradient(135deg, #f59e0b, #b45309)', // Amber
+    'linear-gradient(135deg, #06b6d4, #0891b2)', // Cyan
+  ];
+  let sum = 0;
+  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i);
+  return colors[sum % colors.length];
+};
 
 export const TaskNode = ({ id, data, selected }: NodeProps) => {
   const { t } = useTranslation();
   const { workflow, reorderTask, deleteTask } = useWorkflowStore();
   
   const taskName = String(data.label || '');
-  const approversList = data.approvers as string[];
+  const approverIds = (data.approverIds as string[]) || [];
+  const hasOverwriteCondition = Boolean(data.hasOverwriteCondition);
+  const overwriteConditionsInfo = (data.overwriteConditionsInfo as Array<{ conditionName: string; rulesDescription: string; forcedApprovers: string; }>) || [];
   const formTitles = data.formTitles as string[];
   const hasSkipCondition = Boolean(data.skipCondition);
   const taskType = (data.taskType as 'normal' | 'dynamic' | 'iso' | 'system') || 'normal';
+  const conditionsCount = typeof data.conditionsCount === 'number' ? data.conditionsCount : 0;
+  const isSkipped = Boolean(data.isSkipped);
   
   const taskIndex = workflow.tasks.findIndex(t => t.id === id);
   const isFirst = taskIndex === 0;
@@ -30,8 +56,8 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
 
   return (
     <div
-      className={`custom-task-node ${selected ? 'selected' : ''}`}
-      style={{ opacity: hasSkipCondition ? 0.72 : 1 }}
+      className={`custom-task-node ${selected ? 'selected' : ''} ${isSkipped ? 'bypassed' : ''}`}
+      style={{ opacity: isSkipped ? 0.35 : (hasSkipCondition ? 0.72 : 1) }}
     >
       <Handle type="target" position={Position.Top} className="node-handle" />
       
@@ -47,22 +73,23 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
           {taskName}
         </div>
         <div style={{ display: 'flex', gap: 'var(--spacing-xs)', alignItems: 'center' }}>
-          {Boolean(data.condition) && (
+          {isSkipped && (
             <span 
-              className="node-badge badge-condition" 
-              title={t('tasks.activation_condition')}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fbbf24', color: '#8b4f06', padding: 0 }}
+              className="node-badge badge-skipped" 
+              title={t('canvas.skipped', { defaultValue: 'Skipped' })}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ef4444', color: '#ffffff', padding: '2px var(--spacing-sm)', borderRadius: '12px', gap: '3px', fontSize: '9px', fontWeight: 'bold' }}
             >
-              <IconCondition size={11} />
+              <span>⏭️ {t('canvas.skipped', { defaultValue: 'Skipped' })}</span>
             </span>
           )}
-          {Boolean(data.skipCondition) && (
+          {conditionsCount > 0 && (
             <span 
               className="node-badge badge-condition" 
-              title={t('tasks.skip_condition')}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f59e0b', color: '#ffffff', padding: 0 }}
+              title={t('tasks.conditions_title')}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f59e0b', color: '#ffffff', padding: '2px var(--spacing-sm)', borderRadius: '12px', gap: '3px', fontSize: '9px', fontWeight: 'bold' }}
             >
-              <IconSkip size={10} />
+              <IconCondition size={10} />
+              <span>+{conditionsCount} {conditionsCount === 1 ? t('tasks.condition_count_one') : t('tasks.condition_count_other')}</span>
             </span>
           )}
           <div className="node-controls" style={{ padding: 0, border: 'none', background: 'transparent' }}>
@@ -123,18 +150,96 @@ export const TaskNode = ({ id, data, selected }: NodeProps) => {
         )}
         
         {taskType === 'normal' ? (
-          approversList && approversList.length > 0 ? (
-            <div className="node-detail">
-              <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <IconUsers size={12} style={{ color: 'var(--primary)' }} />
-              </span>
-              <span className="node-text" title={approversList.join(', ')}>
-                {approversList.length} {t('tasks.approver_count', { count: approversList.length })}
-              </span>
+          approverIds && approverIds.length > 0 ? (
+            <div className="node-detail" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--spacing-xs)', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <IconUsers size={12} style={{ color: 'var(--primary)' }} />
+                </span>
+                <span className="node-text" style={{ fontWeight: '600' }}>
+                  {t('tasks.approvers')} ({approverIds.length})
+                </span>
+              </div>
+              
+              <div className="approver-avatar-stack">
+                {approverIds.map(id => {
+                  const user = DUMMY_USERS.find(u => u.id === id);
+                  if (!user) return null;
+                  const parsed = parseUser(user.name);
+                  const initials = parsed.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+                  return (
+                    <div 
+                      key={id} 
+                      className="approver-node-avatar" 
+                      style={{ background: getRandomColor(id) }}
+                    >
+                      {initials}
+                      <div className="avatar-tooltip">
+                        <div style={{ fontWeight: 'bold', fontSize: '11px' }}>{parsed.name}</div>
+                        {parsed.role && <div style={{ fontSize: '9.5px', color: '#94a3b8', marginTop: '2px', lineHeight: '1.2' }}>{parsed.role}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {hasOverwriteCondition && (
+                <div className="overwrite-indicator-badge">
+                  <span>🔄</span>
+                  <span>{t('tasks.overwrite_condition_canvas', { defaultValue: 'Overwritable' })}</span>
+                  <div className="badge-tooltip">
+                    <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#f87171', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', marginBottom: '6px' }}>
+                      {t('tasks.overwrite_tooltip_title', { defaultValue: 'Overwrite Conditions' })}
+                    </div>
+                    {overwriteConditionsInfo.map((info, idx) => (
+                      <div key={idx} style={{ marginBottom: idx < overwriteConditionsInfo.length - 1 ? '8px' : 0 }}>
+                        <div style={{ fontWeight: '600', fontSize: '10.5px', color: 'var(--primary-light, #93c5fd)' }}>
+                          {info.conditionName}
+                        </div>
+                        <div style={{ fontSize: '9.5px', opacity: 0.85, margin: '2px 0' }}>
+                          <strong>{t('tasks.tooltip_rule_label', { defaultValue: 'Rule:' })}</strong> {info.rulesDescription}
+                        </div>
+                        <div style={{ fontSize: '9.5px', color: '#34d399' }}>
+                          <strong>{t('tasks.tooltip_forced_approvers_label', { defaultValue: 'Override to:' })}</strong> {info.forcedApprovers}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="node-detail empty">
-              <span className="node-text">{t('tasks.no_approvers')}</span>
+            <div className="node-detail empty" style={{ flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                <span className="node-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <IconUsers size={12} style={{ color: 'var(--primary)' }} />
+                </span>
+                <span className="node-text">{t('tasks.no_approvers')}</span>
+              </div>
+              {hasOverwriteCondition && (
+                <div className="overwrite-indicator-badge">
+                  <span>🔄</span>
+                  <span>{t('tasks.overwrite_condition_canvas', { defaultValue: 'Overwritable' })}</span>
+                  <div className="badge-tooltip">
+                    <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#f87171', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', marginBottom: '6px' }}>
+                      {t('tasks.overwrite_tooltip_title', { defaultValue: 'Overwrite Conditions' })}
+                    </div>
+                    {overwriteConditionsInfo.map((info, idx) => (
+                      <div key={idx} style={{ marginBottom: idx < overwriteConditionsInfo.length - 1 ? '8px' : 0 }}>
+                        <div style={{ fontWeight: '600', fontSize: '10.5px', color: 'var(--primary-light, #93c5fd)' }}>
+                          {info.conditionName}
+                        </div>
+                        <div style={{ fontSize: '9.5px', opacity: 0.85, margin: '2px 0' }}>
+                          <strong>{t('tasks.tooltip_rule_label', { defaultValue: 'Rule:' })}</strong> {info.rulesDescription}
+                        </div>
+                        <div style={{ fontSize: '9.5px', color: '#34d399' }}>
+                          <strong>{t('tasks.tooltip_forced_approvers_label', { defaultValue: 'Override to:' })}</strong> {info.forcedApprovers}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )
         ) : taskType === 'system' ? (

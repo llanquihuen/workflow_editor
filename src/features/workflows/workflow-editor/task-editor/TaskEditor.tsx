@@ -1,11 +1,35 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
-import type { FormQuestion, TaskCondition, Task, NotificationSettings } from '../../../../types/workflow.types';
-import { IconCondition, IconSkip, IconDelete, IconLock } from '../../../../components/ui/Icons';
+import type { FormQuestion, TaskCondition, Task, NotificationSettings, TaskFlowCondition, ConditionRule } from '../../../../types/workflow.types';
+import { IconCondition, IconSkip, IconDelete, IconLock, IconUserOverwrite } from '../../../../components/ui/Icons';
 import { ApproversTab } from './components/ApproversTab';
 import { FormsTab } from './components/FormsTab';
+import { DUMMY_USERS } from '../../../../utils/constants';
 import './TaskEditor.css';
+
+// Helpers for user parsing and avatar colors
+const parseUser = (fullName: string) => {
+  const match = fullName.match(/(.+?)\s*\((.+?)\)/);
+  if (match) {
+    return { name: match[1].trim(), role: match[2].trim() };
+  }
+  return { name: fullName, role: '' };
+};
+
+const getRandomColor = (id: string) => {
+  const colors = [
+    'linear-gradient(135deg, #3b82f6, #1d4ed8)', // Blue
+    'linear-gradient(135deg, #10b981, #047857)', // Green
+    'linear-gradient(135deg, #8b5cf6, #5b21b6)', // Purple
+    'linear-gradient(135deg, #ec4899, #be185d)', // Pink
+    'linear-gradient(135deg, #f59e0b, #b45309)', // Amber
+    'linear-gradient(135deg, #06b6d4, #0891b2)', // Cyan
+  ];
+  let sum = 0;
+  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i);
+  return colors[sum % colors.length];
+};
 const isValidMove = (tasks: Task[], fromIndex: number, toIndex: number): boolean => {
   if (fromIndex === 0 || toIndex === 0) return false;
   if (fromIndex < 0 || fromIndex >= tasks.length || toIndex < 0 || toIndex >= tasks.length) return false;
@@ -47,6 +71,9 @@ export const TaskEditor = () => {
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [conditionPickerTarget, setConditionPickerTarget] = useState<'condition' | 'skipCondition' | null>(null);
   const [conditionSearchQuery, setConditionSearchQuery] = useState('');
+  const [expandedConditions, setExpandedConditions] = useState<Record<string, boolean>>({});
+  const [forcedApproverSearch, setForcedApproverSearch] = useState<Record<string, string>>({});
+  const [focusedForcedApproverConditionId, setFocusedForcedApproverConditionId] = useState<string | null>(null);
 
   const performReorder = (fromIndex: number, toIndex: number) => {
     if (fromIndex === 0 || toIndex === 0 || fromIndex === toIndex) return;
@@ -232,6 +259,170 @@ export const TaskEditor = () => {
     }
 
     updateTask(selectedTask.id, { [conditionType]: currentCondition });
+  };
+
+  const handleAddCondition = () => {
+    if (!selectedTask) return;
+    const newCondition: TaskFlowCondition = {
+      id: `cond-${Date.now()}`,
+      name: `${t('tasks.condition_count_one')} ${(selectedTask.conditions || []).length + 1}`,
+      rules: [
+        {
+          id: `rule-${Date.now()}-0`,
+          connective: 'IF',
+          formId: availableQuestions[0]?.formId || '',
+          questionId: availableQuestions[0]?.question.id || '',
+          operator: 'equals',
+          value: ''
+        }
+      ],
+      type: 'skip',
+      forcedApproverIds: []
+    };
+
+    const currentConditions = selectedTask.conditions || [];
+    updateTask(selectedTask.id, {
+      conditions: [...currentConditions, newCondition]
+    });
+
+    setExpandedConditions(prev => ({ ...prev, [newCondition.id]: true }));
+  };
+
+  const handleUpdateCondition = (conditionId: string, updates: Partial<TaskFlowCondition>) => {
+    if (!selectedTask) return;
+    const currentConditions = selectedTask.conditions || [];
+    const updatedConditions = currentConditions.map(cond => {
+      if (cond.id === conditionId) {
+        return { ...cond, ...updates };
+      }
+      return cond;
+    });
+    updateTask(selectedTask.id, { conditions: updatedConditions });
+  };
+
+  const handleDeleteCondition = (conditionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedTask) return;
+    const currentConditions = selectedTask.conditions || [];
+    updateTask(selectedTask.id, {
+      conditions: currentConditions.filter(cond => cond.id !== conditionId)
+    });
+  };
+
+  const toggleConditionExpanded = (conditionId: string) => {
+    setExpandedConditions(prev => ({
+      ...prev,
+      [conditionId]: !prev[conditionId]
+    }));
+  };
+
+  const handleAddRule = (conditionId: string) => {
+    if (!selectedTask) return;
+    const currentConditions = selectedTask.conditions || [];
+    const updatedConditions = currentConditions.map(cond => {
+      if (cond.id === conditionId) {
+        const newRule: ConditionRule = {
+          id: `rule-${Date.now()}-${cond.rules.length}`,
+          connective: 'AND',
+          formId: availableQuestions[0]?.formId || '',
+          questionId: availableQuestions[0]?.question.id || '',
+          operator: 'equals',
+          value: ''
+        };
+        return {
+          ...cond,
+          rules: [...cond.rules, newRule]
+        };
+      }
+      return cond;
+    });
+    updateTask(selectedTask.id, { conditions: updatedConditions });
+  };
+
+  const handleUpdateRule = (conditionId: string, ruleId: string, updates: Partial<ConditionRule>) => {
+    if (!selectedTask) return;
+    const currentConditions = selectedTask.conditions || [];
+    const updatedConditions = currentConditions.map(cond => {
+      if (cond.id === conditionId) {
+        const updatedRules = cond.rules.map(rule => {
+          if (rule.id === ruleId) {
+            const newRule = { ...rule, ...updates };
+            if (updates.formId) {
+              const formQs = availableQuestions.filter(q => q.formId === updates.formId);
+              newRule.questionId = formQs[0]?.question.id || '';
+              newRule.value = '';
+            }
+            if (updates.questionId) {
+              newRule.value = '';
+            }
+            return newRule;
+          }
+          return rule;
+        });
+        return {
+          ...cond,
+          rules: updatedRules
+        };
+      }
+      return cond;
+    });
+    updateTask(selectedTask.id, { conditions: updatedConditions });
+  };
+
+  const handleDeleteRule = (conditionId: string, ruleId: string) => {
+    if (!selectedTask) return;
+    const currentConditions = selectedTask.conditions || [];
+    const updatedConditions = currentConditions.map(cond => {
+      if (cond.id === conditionId) {
+        if (cond.rules.length <= 1) return cond;
+        const updatedRules = cond.rules.filter(rule => rule.id !== ruleId);
+        if (updatedRules[0]) {
+          updatedRules[0].connective = 'IF';
+        }
+        return {
+          ...cond,
+          rules: updatedRules
+        };
+      }
+      return cond;
+    });
+    updateTask(selectedTask.id, { conditions: updatedConditions });
+  };
+
+  const handleAddForcedApprover = (conditionId: string, userId: string) => {
+    if (!selectedTask) return;
+    const currentConditions = selectedTask.conditions || [];
+    const updatedConditions = currentConditions.map(cond => {
+      if (cond.id === conditionId) {
+        const currentApprovers = cond.forcedApproverIds || [];
+        if (!currentApprovers.includes(userId)) {
+          return {
+            ...cond,
+            forcedApproverIds: [...currentApprovers, userId]
+          };
+        }
+      }
+      return cond;
+    });
+    updateTask(selectedTask.id, { conditions: updatedConditions });
+    setForcedApproverSearch(prev => ({ ...prev, [conditionId]: '' }));
+    setFocusedForcedApproverConditionId(null);
+  };
+
+  const handleRemoveForcedApprover = (conditionId: string, userId: string) => {
+    if (!selectedTask) return;
+    const currentConditions = selectedTask.conditions || [];
+    const updatedConditions = currentConditions.map(cond => {
+      if (cond.id === conditionId) {
+        const currentApprovers = cond.forcedApproverIds || [];
+        return {
+          ...cond,
+          forcedApproverIds: currentApprovers.filter(id => id !== userId)
+        };
+      }
+      return cond;
+    });
+    updateTask(selectedTask.id, { conditions: updatedConditions });
   };
 
 
@@ -713,332 +904,370 @@ export const TaskEditor = () => {
                 <ApproversTab selectedTask={selectedTask} updateTask={updateTask} />
               )}
             </div>
-
+            
             <FormsTab selectedTask={selectedTask} />
 
+            {/* New Multiple Conditions Section */}
             {selectedIndex > 0 && (
               <div className="editor-section">
-                <h4>{t('tasks.activation_condition')}</h4>
-                <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>{t('tasks.activation_desc')}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
+                  <h4 style={{ margin: 0 }}>{t('tasks.conditions_title', { defaultValue: 'Conditions' })}</h4>
+                </div>
+                <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>
+                  {t('tasks.conditions_desc', { defaultValue: 'Define rules to skip this task or overwrite its approvers based on previous answers.' })}
+                </p>
 
-                <div className="editor-field">
-                  <label>{t('tasks.depends_on')}</label>
-                  {(() => {
-                    const activeConditionItem = selectedTask.condition 
-                      ? availableQuestions.find(item => 
-                          item.taskId === selectedTask.condition?.dependentTaskId &&
-                          item.formId === selectedTask.condition?.formId &&
-                          item.question.id === selectedTask.condition?.questionId
-                        )
-                      : null;
-
-                    if (selectedTask.condition && activeConditionItem) {
-                      return (
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 'var(--spacing-sm)',
-                          padding: 'var(--spacing-md) var(--spacing-md)',
-                          background: 'var(--bg-dark)',
-                          border: '1px solid var(--panel-border)',
-                          borderRadius: '8px',
-                          width: '100%'
-                        }}>
-                          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                            {t('tasks.selected_condition_breadcrumb')}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-xs)', fontSize: 'var(--text-xs)' }}>
-                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
-                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
-                                {t('tasks.task_prefix')}{activeConditionItem.taskNumber}
-                              </span>
-                              {activeConditionItem.taskName}
-                            </span>
-                            <span style={{ color: 'var(--text-muted)' }}>➔</span>
-                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
-                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
-                                {t('tasks.form_prefix')}{activeConditionItem.formNumber}
-                              </span>
-                              {activeConditionItem.formTitle}
-                            </span>
-                            <span style={{ color: 'var(--text-muted)' }}>➔</span>
-                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
-                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
-                                {t('tasks.question_prefix')}{activeConditionItem.questionNumber}
-                              </span>
-                              {activeConditionItem.question.label}
-                            </span>
-                          </div>
-                          <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-xs)' }}>
-                            <button
-                              type="button"
-                              className="btn-premium-action"
-                              onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('condition'); }}
-                              style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1 }}
-                            >
-                              {t('tasks.click_to_configure')}
-                            </button>
-                            <button
-                              type="button"
-                              className="form-delete-btn"
-                              onClick={() => handleConditionChange('condition', 'question', '')}
-                              style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1, color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
-                            >
-                              {t('tasks.clear_condition_btn')}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    }
+                <div className="conditions-editor-container">
+                  {(selectedTask.conditions || []).map((cond, cIdx) => {
+                    const isExpanded = !!expandedConditions[cond.id];
+                    const searchInput = forcedApproverSearch[cond.id] || '';
+                    const showDropdown = focusedForcedApproverConditionId === cond.id;
+                    const filteredForcedUsers = DUMMY_USERS.filter(u =>
+                      u.name.toLowerCase().includes(searchInput.toLowerCase()) &&
+                      !(cond.forcedApproverIds || []).includes(u.id)
+                    );
 
                     return (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: 'var(--spacing-sm) var(--spacing-md)',
-                        background: 'rgba(255,255,255,0.01)',
-                        border: '1px dashed var(--panel-border)',
-                        borderRadius: '8px',
-                        width: '100%',
-                        gap: 'var(--spacing-sm)'
-                      }}>
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic', wordBreak: 'break-word', flex: 1 }}>
-                          🟢 {t('tasks.always_execute_desc') || t('tasks.always_execute')}
-                        </span>
-                        <button
-                          type="button"
-                          className="btn-premium-action"
-                          onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('condition'); }}
-                          style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: 'var(--text-xs)', flexShrink: 0 }}
-                        >
-                          {t('tasks.click_to_configure')}
-                        </button>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {selectedTask.condition && (
-                  <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
-                    <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
-                      <label>{t('tasks.operator')}</label>
-                      <select
-                        className="form-input"
-                        value={selectedTask.condition.operator}
-                        onChange={(e) => handleConditionChange('condition', 'operator', e.target.value)}
-                      >
-                        <option value="equals">{t('forms.operators.equals')}</option>
-                        <option value="not_equals">{t('forms.operators.not_equals')}</option>
-                        <option value="contains">{t('forms.operators.contains')}</option>
-                        {(() => {
-                          const targetQ = availableQuestions.find(q => q.question.id === selectedTask.condition?.questionId)?.question;
-                          if (targetQ?.type === 'number') {
-                            return (
-                              <>
-                                <option value="greater_than">{t('forms.operators.greater_than')}</option>
-                                <option value="less_than">{t('forms.operators.less_than')}</option>
-                              </>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </select>
-                    </div>
-                    <div className="editor-field" style={{ flex: 2, marginBottom: 0 }}>
-                      <label>{t('tasks.expected_value')}</label>
-                      {(() => {
-                        const targetQ = availableQuestions.find(q => q.question.id === selectedTask.condition?.questionId)?.question;
-                        if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
-                          return (
-                            <select
-                              className="form-input"
-                              value={selectedTask.condition.value}
-                              onChange={(e) => handleConditionChange('condition', 'value', e.target.value)}
-                            >
-                              <option value="">{t('common.select_option')}</option>
-                              {targetQ.options.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          );
-                        }
-                        return (
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder={t('tasks.expected_value')}
-                            value={selectedTask.condition.value}
-                            onChange={(e) => handleConditionChange('condition', 'value', e.target.value)}
-                          />
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {selectedIndex > 0 && (
-              <div className="editor-section">
-                <h4>{t('tasks.skip_condition')}</h4>
-                <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>{t('tasks.skip_desc')}</p>
-
-                <div className="editor-field">
-                  <label>{t('tasks.skip_depends_on')}</label>
-                  {(() => {
-                    const activeSkipConditionItem = selectedTask.skipCondition 
-                      ? availableQuestions.find(item => 
-                          item.taskId === selectedTask.skipCondition?.dependentTaskId &&
-                          item.formId === selectedTask.skipCondition?.formId &&
-                          item.question.id === selectedTask.skipCondition?.questionId
-                        )
-                      : null;
-
-                    if (selectedTask.skipCondition && activeSkipConditionItem) {
-                      return (
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 'var(--spacing-sm)',
-                          padding: 'var(--spacing-md) var(--spacing-md)',
-                          background: 'var(--bg-dark)',
-                          border: '1px solid var(--panel-border)',
-                          borderRadius: '8px',
-                          width: '100%'
-                        }}>
-                          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                            {t('tasks.selected_condition_breadcrumb')}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-xs)', fontSize: 'var(--text-xs)' }}>
-                                           <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
-                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
-                                {t('tasks.task_prefix')}{activeSkipConditionItem.taskNumber}
-                              </span>
-                              {activeSkipConditionItem.taskName}
-                            </span>
-                            <span style={{ color: 'var(--text-muted)' }}>➔</span>
-                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
-                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
-                                {t('tasks.form_prefix')}{activeSkipConditionItem.formNumber}
-                              </span>
-                              {activeSkipConditionItem.formTitle}
-                            </span>
-                            <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
-                              <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
-                                {t('tasks.question_prefix')}{activeSkipConditionItem.questionNumber}
-                              </span>
-                              {activeSkipConditionItem.question.label}
+                      <div key={cond.id} className="condition-card">
+                        <div className="condition-card-header" onClick={() => toggleConditionExpanded(cond.id)}>
+                          <div className="condition-header-title-section">
+                            <span className="condition-order-circle">{cIdx + 1}</span>
+                            <span className="condition-header-name">{cond.name || `${t('tasks.condition_count_one')} ${cIdx + 1}`}</span>
+                            <span className={`condition-badge ${cond.type}`}>
+                              {cond.type === 'skip' ? t('tasks.skip_task_opt', { defaultValue: 'Skip' }) : t('tasks.overwrite_approver_opt', { defaultValue: 'Overwrite' })}
                             </span>
                           </div>
-                          <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-xs)' }}>
+                          <div className="condition-card-header-actions" onClick={e => e.stopPropagation()}>
                             <button
                               type="button"
-                              className="btn-premium-action"
-                              onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('skipCondition'); }}
-                              style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1 }}
-                            >{t('tasks.click_to_configure')}
-                            </button>
-                            <button
-                              type="button"
-                              className="form-delete-btn"
-                              onClick={() => handleConditionChange('skipCondition', 'question', '')}
-                              style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1, color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                              className="btn-header-action delete-condition"
+                              onClick={(e) => handleDeleteCondition(cond.id, e)}
+                              title={t('common.delete')}
                             >
-                              {t('tasks.clear_condition_btn')}
+                              <IconDelete size={13} />
                             </button>
+
                           </div>
                         </div>
-                      );
-                    }
 
-                    return (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: 'var(--spacing-sm) var(--spacing-md)',
-                        background: 'rgba(255,255,255,0.01)',
-                        border: '1px dashed var(--panel-border)',
-                        borderRadius: '8px',
-                        width: '100%',
-                        gap: 'var(--spacing-sm)'
-                      }}>
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic', wordBreak: 'break-word', flex: 1 }}>
-                          🟢 {t('tasks.never_skip_desc') || t('tasks.never_skip')}
-                        </span>
-                        <button
-                          type="button"
-                          className="btn-premium-action"
-                          onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('skipCondition'); }}
-                          style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: 'var(--text-xs)', flexShrink: 0 }}
-                        >
-                          {t('tasks.click_to_configure')}
-                        </button>
+                        {isExpanded && (
+                          <div className="condition-card-body">
+                            {/* Condition Name */}
+                            <div className="editor-field">
+                              <label>{t('tasks.condition_name', { defaultValue: 'Condition Name' })}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={cond.name}
+                                onChange={(e) => handleUpdateCondition(cond.id, { name: e.target.value })}
+                                style={{ padding: '8px var(--spacing-md)' }}
+                              />
+                            </div>
+
+                            {/* Rules List */}
+                            <div className="rules-list-container">
+                              {cond.rules.map((rule, rIdx) => {
+                                // Find available forms for selection
+                                const uniqueForms = Array.from(
+                                  new Map(availableQuestions.map(q => [q.formId, q.formTitle])).entries()
+                                );
+
+                                // Get questions for the selected form in this rule
+                                const formQuestions = availableQuestions.filter(q => q.formId === rule.formId);
+
+                                return (
+                                  <div key={rule.id} className="rule-row">
+                                    {/* Connective IF / AND / OR */}
+                                    {rIdx === 0 ? (
+                                      <span className="connective-badge if">IF</span>
+                                    ) : (
+                                      <select
+                                        className="connective-select-dropdown"
+                                        value={rule.connective}
+                                        onChange={(e) => handleUpdateRule(cond.id, rule.id, { connective: e.target.value as 'AND' | 'OR' })}
+                                      >
+                                        <option value="AND">AND</option>
+                                        <option value="OR">OR</option>
+                                      </select>
+                                    )}
+
+                                    {/* Form Select */}
+                                    <div className="rule-field">
+                                      <select
+                                        className="form-input"
+                                        value={rule.formId}
+                                        onChange={(e) => handleUpdateRule(cond.id, rule.id, { formId: e.target.value })}
+                                        style={{ padding: '8px var(--spacing-sm)', fontSize: '12px' }}
+                                      >
+                                        {uniqueForms.map(([fId, fTitle]) => (
+                                          <option key={fId} value={fId}>{fTitle}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+
+                                    {/* Question Select */}
+                                    <div className="rule-field">
+                                      <select
+                                        className="form-input"
+                                        value={rule.questionId}
+                                        onChange={(e) => handleUpdateRule(cond.id, rule.id, { questionId: e.target.value })}
+                                        style={{ padding: '8px var(--spacing-sm)', fontSize: '12px' }}
+                                      >
+                                        {formQuestions.map(item => (
+                                          <option key={item.question.id} value={item.question.id}>
+                                            {item.question.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+
+                                    {/* Operator Select */}
+                                    <div className="rule-field operator">
+                                      <select
+                                        className="form-input"
+                                        value={rule.operator}
+                                        onChange={(e) => handleUpdateRule(cond.id, rule.id, { operator: e.target.value as any })}
+                                        style={{ padding: '8px var(--spacing-sm)', fontSize: '12px' }}
+                                      >
+                                        <option value="equals">=</option>
+                                        <option value="not_equals">!=</option>
+                                        <option value="contains">contains</option>
+                                        {(() => {
+                                          const targetQ = availableQuestions.find(q => q.question.id === rule.questionId)?.question;
+                                          if (targetQ?.type === 'number') {
+                                            return (
+                                              <>
+                                                <option value="greater_than">&gt;</option>
+                                                <option value="less_than">&lt;</option>
+                                              </>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </select>
+                                    </div>
+
+                                    {/* Value Input */}
+                                    <div className="rule-field">
+                                      {(() => {
+                                        const targetQ = availableQuestions.find(q => q.question.id === rule.questionId)?.question;
+                                        if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
+                                          return (
+                                            <select
+                                              className="form-input"
+                                              value={rule.value}
+                                              onChange={(e) => handleUpdateRule(cond.id, rule.id, { value: e.target.value })}
+                                              style={{ padding: '8px var(--spacing-sm)', fontSize: '12px' }}
+                                            >
+                                              <option value="">{t('common.select_option')}</option>
+                                              {targetQ.options.map(opt => (
+                                                <option key={opt} value={opt}>{opt}</option>
+                                              ))}
+                                            </select>
+                                          );
+                                        }
+                                        return (
+                                          <input
+                                            type="text"
+                                            className="form-input"
+                                            value={rule.value}
+                                            onChange={(e) => handleUpdateRule(cond.id, rule.id, { value: e.target.value })}
+                                            placeholder={t('tasks.expected_value')}
+                                            style={{ padding: '8px var(--spacing-sm)', fontSize: '12px' }}
+                                          />
+                                        );
+                                      })()}
+                                    </div>
+
+                                    {/* Rule Delete Button */}
+                                    {cond.rules.length > 1 && (
+                                      <button
+                                        type="button"
+                                        className="rule-delete-btn"
+                                        onClick={() => handleDeleteRule(cond.id, rule.id)}
+                                        title={t('common.delete')}
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Add Rule Button */}
+                            <div>
+                              <button
+                                type="button"
+                                className="btn-discreet"
+                                onClick={() => handleAddRule(cond.id)}
+                                style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: '12px' }}
+                              >
+                                {t('tasks.add_rule', { defaultValue: '+ Add Rule' })}
+                              </button>
+                            </div>
+
+                            {/* IF CONDITION IS MET, THEN */}
+                            <div className="editor-field" style={{ marginBottom: 0 }}>
+                              <label style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                {t('tasks.if_condition_met', { defaultValue: 'IF CONDITION IS MET, THEN:' })}
+                              </label>
+
+                              <div className="action-cards-grid">
+                                <div
+                                  className={`action-card ${cond.type === 'skip' ? 'selected' : ''}`}
+                                  onClick={() => handleUpdateCondition(cond.id, { type: 'skip' })}
+                                >
+                                  <div className="action-card-radio">
+                                    <div className="action-card-radio-inner" />
+                                  </div>
+                                  <div className="action-card-icon-wrapper skip">
+                                    <IconSkip size={14} />
+                                  </div>
+                                  <div className="action-card-text">
+                                    <span className="action-card-title">
+                                      {t('tasks.skip_task_opt', { defaultValue: 'Skip' })}
+                                    </span>
+                                    <span className="action-card-desc">
+                                      {t('tasks.skip_task_opt_desc', { defaultValue: 'This step is skipped: flow continues to the next step.' })}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div
+                                  className={`action-card ${cond.type === 'overwrite' ? 'selected' : ''}`}
+                                  onClick={() => handleUpdateCondition(cond.id, { type: 'overwrite' })}
+                                >
+                                  <div className="action-card-radio">
+                                    <div className="action-card-radio-inner" />
+                                  </div>
+                                  <div className="action-card-icon-wrapper overwrite">
+                                    <IconUserOverwrite size={14} />
+                                  </div>
+                                  <div className="action-card-text">
+                                    <span className="action-card-title">
+                                      {t('tasks.overwrite_approver_opt', { defaultValue: 'Overwrite Approver' })}
+                                    </span>
+                                    <span className="action-card-desc">
+                                      {t('tasks.overwrite_approver_opt_desc', { defaultValue: 'Replace the step\'s approvers with the ones defined below.' })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Overwrite Forced Approvers List */}
+                            {cond.type === 'overwrite' && (
+                              <div className="forced-approvers-container">
+                                <div className="forced-approvers-header">
+                                  <span>👤</span>
+                                  <span>{t('tasks.forced_approvers_title', { defaultValue: 'FORCED APPROVERS FOR THIS CONDITION' })}</span>
+                                </div>
+
+                                <div className="approver-search-wrapper">
+                                  <span className="search-icon">🔍</span>
+                                  <input
+                                    type="text"
+                                    className="form-input approver-search-input"
+                                    placeholder={t('tasks.search_forced_approver_placeholder', { defaultValue: 'Search approver to add...' })}
+                                    value={searchInput}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setForcedApproverSearch(prev => ({ ...prev, [cond.id]: val }));
+                                      setFocusedForcedApproverConditionId(cond.id);
+                                    }}
+                                    onFocus={() => setFocusedForcedApproverConditionId(cond.id)}
+                                    onBlur={() => setTimeout(() => {
+                                      if (focusedForcedApproverConditionId === cond.id) {
+                                        setFocusedForcedApproverConditionId(null);
+                                      }
+                                    }, 200)}
+                                    style={{ height: '36px', fontSize: '12px' }}
+                                  />
+                                  <span className="dropdown-caret">▼</span>
+
+                                  {showDropdown && filteredForcedUsers.length > 0 && (
+                                    <div className="approver-search-dropdown" style={{ top: '100%', left: 0, right: 0 }}>
+                                      {filteredForcedUsers.map(u => {
+                                        const parsed = parseUser(u.name);
+                                        const initials = parsed.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+                                        return (
+                                          <div
+                                            key={u.id}
+                                            className="approver-dropdown-item"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              handleAddForcedApprover(cond.id, u.id);
+                                            }}
+                                          >
+                                            <div className="approver-avatar" style={{ background: getRandomColor(u.id), width: '28px', height: '28px', fontSize: '10px' }}>
+                                              {initials}
+                                            </div>
+                                            <div className="approver-info">
+                                              <span className="approver-name" style={{ fontSize: '12px' }}>{parsed.name}</span>
+                                              {parsed.role && <span className="approver-role" style={{ fontSize: '10px' }}>{parsed.role}</span>}
+                                            </div>
+                                            <span className="add-plus">+</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="forced-approver-badges-list">
+                                  {(cond.forcedApproverIds || []).map(id => {
+                                    const user = DUMMY_USERS.find(u => u.id === id);
+                                    if (!user) return null;
+                                    const parsed = parseUser(user.name);
+                                    const initials = parsed.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+                                    return (
+                                      <div key={id} className="approver-premium-badge" style={{ padding: '6px 8px', gap: '8px' }}>
+                                        <div className="badge-avatar" style={{ background: getRandomColor(id), width: '24px', height: '24px', fontSize: '9px' }}>
+                                          {initials}
+                                        </div>
+                                        <div className="badge-details" style={{ paddingRight: '12px' }}>
+                                          <span className="badge-name" style={{ fontSize: '11.5px' }}>{parsed.name}</span>
+                                          {parsed.role && <span className="badge-role" style={{ fontSize: '9.5px', marginTop: 0 }}>{parsed.role}</span>}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className="btn-remove-badge"
+                                          onClick={() => handleRemoveForcedApprover(cond.id, id)}
+                                          title={t('common.delete')}
+                                          style={{ width: '16px', height: '16px', fontSize: '12px' }}
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 'var(--spacing-xs)' }}>
+                              {t('tasks.sources_previous_steps', { defaultValue: 'Sources: forms from previous steps' })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
-                  })()}
-                </div>
+                  })}
 
-                {selectedTask.skipCondition && (
-                  <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
-                    <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
-                      <label>{t('tasks.operator')}</label>
-                      <select
-                        className="form-input"
-                        value={selectedTask.skipCondition.operator}
-                        onChange={(e) => handleConditionChange('skipCondition', 'operator', e.target.value)}
-                      >
-                        <option value="equals">{t('forms.operators.equals')}</option>
-                        <option value="not_equals">{t('forms.operators.not_equals')}</option>
-                        <option value="contains">{t('forms.operators.contains')}</option>
-                        {(() => {
-                          const targetQ = availableQuestions.find(q => q.question.id === selectedTask.skipCondition?.questionId)?.question;
-                          if (targetQ && targetQ.type === 'number') {
-                            return (
-                              <>
-                                <option value="greater_than">{t('forms.operators.greater_than')}</option>
-                                <option value="less_than">{t('forms.operators.less_than')}</option>
-                              </>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </select>
-                    </div>
-                    <div className="editor-field" style={{ flex: 2, marginBottom: 0 }}>
-                      <label>{t('tasks.expected_value')}</label>
-                      {(() => {
-                        const targetQ = availableQuestions.find(q => q.question.id === selectedTask.skipCondition?.questionId)?.question;
-                        if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
-                          return (
-                            <select
-                              className="form-input"
-                              value={selectedTask.skipCondition.value}
-                              onChange={(e) => handleConditionChange('skipCondition', 'value', e.target.value)}
-                            >
-                              <option value="">{t('common.select_option')}</option>
-                              {targetQ.options.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          );
-                        }
-                        return (
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder={t('tasks.expected_value')}
-                            value={selectedTask.skipCondition.value}
-                            onChange={(e) => handleConditionChange('skipCondition', 'value', e.target.value)}
-                          />
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
+                  <button
+                    type="button"
+                    className="btn-premium-action"
+                    onClick={handleAddCondition}
+                    style={{ marginTop: 'var(--spacing-xs)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--spacing-xs)' }}
+                  >
+                    <span>+</span>
+                    <span>{t('tasks.add_condition', { defaultValue: 'Add Condition' })}</span>
+                  </button>
+                </div>
               </div>
             )}
+            {/* Note: Original single condition editor blocks have been moved to the bottom of the file as comments for backwards compatibility */}
             {/* New section: Expiración y Notificaciones */}
             <div className="editor-section">
               <h4>{t('tasks.expiration_and_notifications')}</h4>
@@ -1421,3 +1650,335 @@ export const TaskEditor = () => {
     </div>
   );
 };
+
+/*
+=========================================
+OLD SINGLE CONDITION EDITORS FOR BACKWARDS COMPATIBILITY
+=========================================
+
+{selectedIndex > 0 && (
+  <div className="editor-section">
+    <h4>{t('tasks.activation_condition')}</h4>
+    <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>{t('tasks.activation_desc')}</p>
+
+    <div className="editor-field">
+      <label>{t('tasks.depends_on')}</label>
+      {(() => {
+        const activeConditionItem = selectedTask.condition 
+          ? availableQuestions.find(item => 
+              item.taskId === selectedTask.condition?.dependentTaskId &&
+              item.formId === selectedTask.condition?.formId &&
+              item.question.id === selectedTask.condition?.questionId
+            )
+          : null;
+
+        if (selectedTask.condition && activeConditionItem) {
+          return (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--spacing-sm)',
+              padding: 'var(--spacing-md) var(--spacing-md)',
+              background: 'var(--bg-dark)',
+              border: '1px solid var(--panel-border)',
+              borderRadius: '8px',
+              width: '100%'
+            }}>
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                {t('tasks.selected_condition_breadcrumb')}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-xs)', fontSize: 'var(--text-xs)' }}>
+                <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                  <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                    {t('tasks.task_prefix')}{activeConditionItem.taskNumber}
+                  </span>
+                  {activeConditionItem.taskName}
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                  <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                    {t('tasks.form_prefix')}{activeConditionItem.formNumber}
+                  </span>
+                  {activeConditionItem.formTitle}
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                  <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                    {t('tasks.question_prefix')}{activeConditionItem.questionNumber}
+                  </span>
+                  {activeConditionItem.question.label}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-xs)' }}>
+                <button
+                  type="button"
+                  className="btn-premium-action"
+                  onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('condition'); }}
+                  style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1 }}
+                >
+                  {t('tasks.click_to_configure')}
+                </button>
+                <button
+                  type="button"
+                  className="form-delete-btn"
+                  onClick={() => handleConditionChange('condition', 'question', '')}
+                  style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1, color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                >
+                  {t('tasks.clear_condition_btn')}
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 'var(--spacing-sm) var(--spacing-md)',
+            background: 'rgba(255,255,255,0.01)',
+            border: '1px dashed var(--panel-border)',
+            borderRadius: '8px',
+            width: '100%',
+            gap: 'var(--spacing-sm)'
+          }}>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic', wordBreak: 'break-word', flex: 1 }}>
+              🟢 {t('tasks.always_execute_desc') || t('tasks.always_execute')}
+            </span>
+            <button
+              type="button"
+              className="btn-premium-action"
+              onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('condition'); }}
+              style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: 'var(--text-xs)', flexShrink: 0 }}
+            >
+              {t('tasks.click_to_configure')}
+            </button>
+          </div>
+        );
+      })()}
+    </div>
+
+    {selectedTask.condition && (
+      <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
+        <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
+          <label>{t('tasks.operator')}</label>
+          <select
+            className="form-input"
+            value={selectedTask.condition.operator}
+            onChange={(e) => handleConditionChange('condition', 'operator', e.target.value)}
+          >
+            <option value="equals">{t('forms.operators.equals')}</option>
+            <option value="not_equals">{t('forms.operators.not_equals')}</option>
+            <option value="contains">{t('forms.operators.contains')}</option>
+            {(() => {
+              const targetQ = availableQuestions.find(q => q.question.id === selectedTask.condition?.questionId)?.question;
+              if (targetQ?.type === 'number') {
+                return (
+                  <>
+                    <option value="greater_than">{t('forms.operators.greater_than')}</option>
+                    <option value="less_than">{t('forms.operators.less_than')}</option>
+                  </>
+                );
+              }
+              return null;
+            })()}
+          </select>
+        </div>
+        <div className="editor-field" style={{ flex: 2, marginBottom: 0 }}>
+          <label>{t('tasks.expected_value')}</label>
+          {(() => {
+            const targetQ = availableQuestions.find(q => q.question.id === selectedTask.condition?.questionId)?.question;
+            if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
+              return (
+                <select
+                  className="form-input"
+                  value={selectedTask.condition.value}
+                  onChange={(e) => handleConditionChange('condition', 'value', e.target.value)}
+                >
+                  <option value="">{t('common.select_option')}</option>
+                  {targetQ.options.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              );
+            }
+            return (
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('tasks.expected_value')}
+                value={selectedTask.condition.value}
+                onChange={(e) => handleConditionChange('condition', 'value', e.target.value)}
+              />
+            );
+          })()}
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+{selectedIndex > 0 && (
+  <div className="editor-section">
+    <h4>{t('tasks.skip_condition')}</h4>
+    <p className="form-desc" style={{ marginBottom: 'var(--spacing-md)' }}>{t('tasks.skip_desc')}</p>
+
+    <div className="editor-field">
+      <label>{t('tasks.skip_depends_on')}</label>
+      {(() => {
+        const activeSkipConditionItem = selectedTask.skipCondition 
+          ? availableQuestions.find(item => 
+              item.taskId === selectedTask.skipCondition?.dependentTaskId &&
+              item.formId === selectedTask.skipCondition?.formId &&
+              item.question.id === selectedTask.skipCondition?.questionId
+            )
+          : null;
+
+        if (selectedTask.skipCondition && activeSkipConditionItem) {
+          return (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--spacing-sm)',
+              padding: 'var(--spacing-md) var(--spacing-md)',
+              background: 'var(--bg-dark)',
+              border: '1px solid var(--panel-border)',
+              borderRadius: '8px',
+              width: '100%'
+            }}>
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                {t('tasks.selected_condition_breadcrumb')}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-xs)', fontSize: 'var(--text-xs)' }}>
+                <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                  <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                    {t('tasks.task_prefix')}{activeSkipConditionItem.taskNumber}
+                  </span>
+                  {activeSkipConditionItem.taskName}
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                  <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                    {t('tasks.form_prefix')}{activeSkipConditionItem.formNumber}
+                  </span>
+                  {activeSkipConditionItem.formTitle}
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                <span className="multiselect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #1e40af', padding: '2px var(--spacing-sm)', borderRadius: '4px', color: '#1e40af', fontWeight: '600' }}>
+                  <span style={{ backgroundColor: '#1e40af', padding: '1px var(--spacing-xs)', borderRadius: '3px', fontSize: 'var(--text-xs)', marginRight: '2px', color: '#ffffff' }}>
+                    {t('tasks.question_prefix')}{activeSkipConditionItem.questionNumber}
+                  </span>
+                  {activeSkipConditionItem.question.label}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-xs)' }}>
+                <button
+                  type="button"
+                  className="btn-premium-action"
+                  onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('skipCondition'); }}
+                  style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1 }}
+                >
+                  {t('tasks.click_to_configure')}
+                </button>
+                <button
+                  type="button"
+                  className="form-delete-btn"
+                  onClick={() => handleConditionChange('skipCondition', 'question', '')}
+                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: 'var(--text-xs)', flex: 1, color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                >
+                  {t('tasks.clear_condition_btn')}
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 'var(--spacing-sm) var(--spacing-md)',
+            background: 'rgba(255,255,255,0.01)',
+            border: '1px dashed var(--panel-border)',
+            borderRadius: '8px',
+            width: '100%',
+            gap: 'var(--spacing-sm)'
+          }}>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic', wordBreak: 'break-word', flex: 1 }}>
+              🟢 {t('tasks.never_skip_desc') || t('tasks.never_skip')}
+            </span>
+            <button
+              type="button"
+              className="btn-premium-action"
+              onClick={() => { setConditionSearchQuery(''); setConditionPickerTarget('skipCondition'); }}
+              style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: 'var(--text-xs)', flexShrink: 0 }}
+            >
+              {t('tasks.click_to_configure')}
+            </button>
+          </div>
+        );
+      })()}
+    </div>
+
+    {selectedTask.skipCondition && (
+      <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
+        <div className="editor-field" style={{ flex: 1, marginBottom: 0 }}>
+          <label>{t('tasks.operator')}</label>
+          <select
+            className="form-input"
+            value={selectedTask.skipCondition.operator}
+            onChange={(e) => handleConditionChange('skipCondition', 'operator', e.target.value)}
+          >
+            <option value="equals">{t('forms.operators.equals')}</option>
+            <option value="not_equals">{t('forms.operators.not_equals')}</option>
+            <option value="contains">{t('forms.operators.contains')}</option>
+            {(() => {
+              const targetQ = availableQuestions.find(q => q.question.id === selectedTask.skipCondition?.questionId)?.question;
+              if (targetQ && targetQ.type === 'number') {
+                return (
+                  <>
+                    <option value="greater_than">{t('forms.operators.greater_than')}</option>
+                    <option value="less_than">{t('forms.operators.less_than')}</option>
+                  </>
+                );
+              }
+              return null;
+            })()}
+          </select>
+        </div>
+        <div className="editor-field" style={{ flex: 2, marginBottom: 0 }}>
+          <label>{t('tasks.expected_value')}</label>
+          {(() => {
+            const targetQ = availableQuestions.find(q => q.question.id === selectedTask.skipCondition?.questionId)?.question;
+            if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
+              return (
+                <select
+                  className="form-input"
+                  value={selectedTask.skipCondition.value}
+                  onChange={(e) => handleConditionChange('skipCondition', 'value', e.target.value)}
+                >
+                  <option value="">{t('common.select_option')}</option>
+                  {targetQ.options.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              );
+            }
+            return (
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('tasks.expected_value')}
+                value={selectedTask.skipCondition.value}
+                onChange={(e) => handleConditionChange('skipCondition', 'value', e.target.value)}
+              />
+            );
+          })()}
+        </div>
+      </div>
+    )}
+  </div>
+)}
+*/

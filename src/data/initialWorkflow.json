@@ -26,17 +26,31 @@
       "approverIds": [
         "usr-10"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-registro",
-        "questionId": "q-edad",
-        "operator": "less_than",
-        "value": "18"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 200
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-mg9414a9b",
+          "name": "Rule: Autorización de Menores Activation",
+          "rules": [
+            {
+              "id": "rule-q8m9byqoj",
+              "connective": "IF",
+              "formId": "form-registro",
+              "questionId": "q-edad",
+              "operator": "less_than",
+              "value": "18"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-19",
+            "usr-17"
+          ]
+        }
+      ]
     },
     {
       "id": "task-3",
@@ -48,17 +62,31 @@
       "approverIds": [
         "usr-8"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-registro",
-        "questionId": "q-origen",
-        "operator": "equals",
-        "value": "Sí, viaje internacional"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 350
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-9l2uacmm2",
+          "name": "Rule: Trámites de Viaje Internacional Activation",
+          "rules": [
+            {
+              "id": "rule-84cd2yhfz",
+              "connective": "IF",
+              "formId": "form-registro",
+              "questionId": "q-origen",
+              "operator": "equals",
+              "value": "Sí, viaje internacional"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-20",
+            "usr-18"
+          ]
+        }
+      ]
     },
     {
       "id": "task-4",
@@ -86,17 +114,31 @@
       "approverIds": [
         "usr-4"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-registro",
-        "questionId": "q-curso",
-        "operator": "equals",
-        "value": "Introducción a React & TypeScript"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 650
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-boqqnburf",
+          "name": "Rule: Preparación de Equipamiento Técnico Activation",
+          "rules": [
+            {
+              "id": "rule-jrx30ff8v",
+              "connective": "IF",
+              "formId": "form-registro",
+              "questionId": "q-curso",
+              "operator": "equals",
+              "value": "Introducción a React & TypeScript"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-2",
+            "usr-1"
+          ]
+        }
+      ]
     },
     {
       "id": "task-6",

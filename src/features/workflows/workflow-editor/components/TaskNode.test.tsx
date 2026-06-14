@@ -42,6 +42,7 @@ describe('TaskNode Component', () => {
       label: 'Tarea de Prueba',
       order: 1,
       approvers: ['usr-1', 'usr-2'],
+      approverIds: ['usr-1', 'usr-2'],
       formTitles: ['Form 1'],
       taskType: 'normal'
     };
@@ -51,7 +52,9 @@ describe('TaskNode Component', () => {
     expect(screen.getByText('Tarea de Prueba')).toBeInTheDocument();
     expect(screen.getAllByText('1').length).toBeGreaterThan(0);
     expect(screen.getByText('forms.title (1)')).toBeInTheDocument();
-    expect(screen.getByText('2 tasks.approver_count')).toBeInTheDocument();
+    expect(screen.getByText('tasks.approvers (2)')).toBeInTheDocument();
+    expect(screen.getByText('AG')).toBeInTheDocument();
+    expect(screen.getByText('CL')).toBeInTheDocument();
   });
 
   it('debería mostrar estado dinámico', () => {

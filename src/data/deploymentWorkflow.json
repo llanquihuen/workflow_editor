@@ -26,17 +26,31 @@
       "approverIds": [
         "usr-16"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-release-risk",
-        "questionId": "q-risk-level",
-        "operator": "equals",
-        "value": "High Risk"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 200
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-t8qixrehn",
+          "name": "Rule: Deep Security & Penetration Review Activation",
+          "rules": [
+            {
+              "id": "rule-qlnf9ll1a",
+              "connective": "IF",
+              "formId": "form-release-risk",
+              "questionId": "q-risk-level",
+              "operator": "equals",
+              "value": "High Risk"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-19",
+            "usr-17"
+          ]
+        }
+      ]
     },
     {
       "id": "task-3",
@@ -48,17 +62,31 @@
       "approverIds": [
         "usr-4"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-release-risk",
-        "questionId": "q-db-migration",
-        "operator": "equals",
-        "value": "Yes"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 350
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-20wpgx1km",
+          "name": "Rule: Database Schema Migration Gate Activation",
+          "rules": [
+            {
+              "id": "rule-huobs0gpw",
+              "connective": "IF",
+              "formId": "form-release-risk",
+              "questionId": "q-db-migration",
+              "operator": "equals",
+              "value": "Yes"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-20",
+            "usr-18"
+          ]
+        }
+      ]
     },
     {
       "id": "task-4",
@@ -70,17 +98,31 @@
       "approverIds": [
         "usr-7"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-release-risk",
-        "questionId": "q-breaking-changes",
-        "operator": "equals",
-        "value": "Yes"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 500
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-0s0w984kv",
+          "name": "Rule: Customer Communications & Release Notes Activation",
+          "rules": [
+            {
+              "id": "rule-ko0gq6iqz",
+              "connective": "IF",
+              "formId": "form-release-risk",
+              "questionId": "q-breaking-changes",
+              "operator": "equals",
+              "value": "Yes"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-1",
+            "usr-20"
+          ]
+        }
+      ]
     },
     {
       "id": "task-5",

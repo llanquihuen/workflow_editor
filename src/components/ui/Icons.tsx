@@ -23,6 +23,14 @@ export const IconSkip = ({ size = defaultSize, ...props }: IconProps) => (
   </svg>
 );
 
+export const IconUserOverwrite = ({ size = defaultSize, ...props }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M17 3a2.828 2.828 0 1 1 4 4L12 16l-4 1 1-4 9-9z" />
+  </svg>
+);
+
 export const IconUp = ({ size = defaultSize, ...props }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <polyline points="18 15 12 9 6 15" />

@@ -26,17 +26,31 @@
       "approverIds": [
         "usr-3"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-employee-info",
-        "questionId": "q-remote",
-        "operator": "equals",
-        "value": "Yes"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 200
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-tgcbcdfwl",
+          "name": "Rule: Remote Work Agreement & Shipping Activation",
+          "rules": [
+            {
+              "id": "rule-mt397lm97",
+              "connective": "IF",
+              "formId": "form-employee-info",
+              "questionId": "q-remote",
+              "operator": "equals",
+              "value": "Yes"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-19",
+            "usr-17"
+          ]
+        }
+      ]
     },
     {
       "id": "task-3",
@@ -48,17 +62,31 @@
       "approverIds": [
         "usr-4"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-employee-info",
-        "questionId": "q-role",
-        "operator": "equals",
-        "value": "Software Engineer"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 350
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-gxk5mb62h",
+          "name": "Rule: Developer Environment Provisioning Activation",
+          "rules": [
+            {
+              "id": "rule-5ueiqqzw2",
+              "connective": "IF",
+              "formId": "form-employee-info",
+              "questionId": "q-role",
+              "operator": "equals",
+              "value": "Software Engineer"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-20",
+            "usr-18"
+          ]
+        }
+      ]
     },
     {
       "id": "task-4",
@@ -71,17 +99,31 @@
         "usr-2",
         "usr-17"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-employee-info",
-        "questionId": "q-department",
-        "operator": "equals",
-        "value": "Finance"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 500
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-0aulbp1og",
+          "name": "Rule: Financial Compliance & Background Check Activation",
+          "rules": [
+            {
+              "id": "rule-wmbavyh90",
+              "connective": "IF",
+              "formId": "form-employee-info",
+              "questionId": "q-department",
+              "operator": "equals",
+              "value": "Finance"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-12",
+            "usr-15"
+          ]
+        }
+      ]
     },
     {
       "id": "task-5",
@@ -93,17 +135,31 @@
       "approverIds": [
         "usr-5"
       ],
-      "condition": {
-        "dependentTaskId": "task-1",
-        "formId": "form-employee-info",
-        "questionId": "q-remote",
-        "operator": "equals",
-        "value": "No"
-      },
       "ui_metadata": {
         "x": 250,
         "y": 650
-      }
+      },
+      "conditions": [
+        {
+          "id": "cond-rxs2ek2o7",
+          "name": "Rule: Office Seat Allocation & Access Badge Activation",
+          "rules": [
+            {
+              "id": "rule-4ozj7ohzp",
+              "connective": "IF",
+              "formId": "form-employee-info",
+              "questionId": "q-remote",
+              "operator": "equals",
+              "value": "No"
+            }
+          ],
+          "type": "overwrite",
+          "forcedApproverIds": [
+            "usr-2",
+            "usr-1"
+          ]
+        }
+      ]
     },
     {
       "id": "task-6",
