@@ -1232,7 +1232,7 @@ export const FormLibrary = () => {
 
                                   <div className="card-body" style={{ marginTop: 'var(--spacing-md)' }}>
                                     <div className="field-group" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', position: 'relative', width: '100%' }}>
-                                      <label style={{ fontWeight: 'bold', color: 'black', marginBottom: '2px' }}>
+                                      <label style={{ fontWeight: 'bold', marginBottom: '2px' }}>
                                         {t('forms.disclaimer_text')}
                                       </label>
                                       <textarea
@@ -1404,7 +1404,7 @@ export const FormLibrary = () => {
 
                               <div className="card-body">
                                 <div className="field-group">
-                                  <label style={{ fontWeight: 'bold', color: 'black', marginBottom: '2px' }}>{t('forms.type')}</label>
+                                  <label style={{ fontWeight: 'bold', marginBottom: '2px' }}>{t('forms.type')}</label>
                                   <select style={{ marginRight: '25px', paddingRight: 'var(--spacing-sm)' }}
                                     className="form-input" value={q.type}
                                     onChange={(e) => handleQuestionUpdate(q.id, { type: e.target.value as QuestionType })}
