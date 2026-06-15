@@ -149,13 +149,28 @@ export const FormsTab = ({ selectedTask }: FormsTabProps) => {
 
   // Helper to validate cross-form question dependencies
   const getFormValidationError = (f: Form) => {
+    const localQuestionIds = new Set(f.questions.map(fq => fq.id));
     for (const q of f.questions) {
-      if (q.condition && q.condition.formId && q.condition.formId !== f.id) {
-        const depFormId = q.condition.formId;
-        const depForm = forms.find(form => form.id === depFormId);
+      if (q.dependencyQuestion && !localQuestionIds.has(q.dependencyQuestion)) {
+        // Find which form owns the dependency target
+        let depFormId: string | undefined;
+        let depForm: Form | undefined;
+        for (const otherForm of forms) {
+          if (otherForm.questions.some(oq => oq.id === q.dependencyQuestion)) {
+            depFormId = otherForm.id;
+            depForm = otherForm;
+            break;
+          }
+        }
         
+        if (!depFormId) {
+          return t('tasks.validation_form_dep_not_assigned', {
+            depFormTitle: 'Formulario Desconocido'
+          });
+        }
+
         // Find if this dependent form is assigned to any task
-        const depTask = workflow.tasks.find(task => (task.formIds || []).includes(depFormId));
+        const depTask = workflow.tasks.find(task => (task.formIds || []).includes(depFormId!));
         if (!depTask) {
           return t('tasks.validation_form_dep_not_assigned', {
             depFormTitle: depForm?.title || 'Formulario Desconocido'
@@ -166,7 +181,7 @@ export const FormsTab = ({ selectedTask }: FormsTabProps) => {
         if (depTask.id === selectedTask.id) {
           const currentFormIds = selectedTask.formIds || [];
           const thisFormIndexInSelected = currentFormIds.indexOf(f.id);
-          const depFormIndexInSelected = currentFormIds.indexOf(depFormId);
+          const depFormIndexInSelected = currentFormIds.indexOf(depFormId!);
 
           if (depFormIndexInSelected === -1) {
             return t('tasks.validation_form_dep_same_task_not_linked', {
@@ -219,11 +234,20 @@ export const FormsTab = ({ selectedTask }: FormsTabProps) => {
       if (!formObj) continue;
       
       for (const q of formObj.questions) {
-        if (q.condition && q.condition.formId && q.condition.formId !== fid) {
-          const depFormId = q.condition.formId;
-          const depIndex = swappedIds.indexOf(depFormId);
-          if (depIndex !== -1 && depIndex > i) {
-            return true;
+        if (q.dependencyQuestion) {
+          // Find which form owns the dependency target
+          let depFormId: string | undefined;
+          for (const searchForm of forms) {
+            if (searchForm.questions.some(sq => sq.id === q.dependencyQuestion)) {
+              depFormId = searchForm.id;
+              break;
+            }
+          }
+          if (depFormId && depFormId !== fid) {
+            const depIndex = swappedIds.indexOf(depFormId);
+            if (depIndex !== -1 && depIndex > i) {
+              return true;
+            }
           }
         }
       }

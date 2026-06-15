@@ -309,11 +309,8 @@
           "type": "text",
           "label": "EU VAT Number",
           "required": true,
-          "condition": {
-            "questionId": "q-vendor-country",
-            "operator": "equals",
-            "value": "European Union"
-          },
+          "dependencyQuestion": "q-vendor-country",
+          "dependencyCondition": "European Union",
           "displayNumber": "2.1"
         },
         {
@@ -352,11 +349,8 @@
             "5 Years Lifetime Premium"
           ],
           "required": true,
-          "condition": {
-            "questionId": "q-purchase-category",
-            "operator": "equals",
-            "value": "Hardware Equipment"
-          },
+          "dependencyQuestion": "q-purchase-category",
+          "dependencyCondition": "Hardware Equipment",
           "displayNumber": "1.1"
         },
         {
@@ -375,11 +369,8 @@
           "type": "text",
           "label": "URL to Brand Asset Requirements Checklist",
           "required": true,
-          "condition": {
-            "questionId": "q-marketing-access",
-            "operator": "equals",
-            "value": "Yes"
-          },
+          "dependencyQuestion": "q-marketing-access",
+          "dependencyCondition": "Yes",
           "displayNumber": "2.1"
         }
       ]
@@ -412,11 +403,8 @@
             "Multi-cloud / Custom Datacenter"
           ],
           "required": true,
-          "condition": {
-            "questionId": "q-hosting-type",
-            "operator": "equals",
-            "value": "Cloud (SaaS)"
-          },
+          "dependencyQuestion": "q-hosting-type",
+          "dependencyCondition": "Cloud (SaaS)",
           "displayNumber": "1.1"
         },
         {
@@ -440,11 +428,8 @@
             "Employee/Customer Names & Emails"
           ],
           "required": true,
-          "condition": {
-            "questionId": "q-handles-pii",
-            "operator": "equals",
-            "value": "Yes"
-          },
+          "dependencyQuestion": "q-handles-pii",
+          "dependencyCondition": "Yes",
           "displayNumber": "2.1"
         }
       ]

@@ -34,7 +34,7 @@ export const CollapsedQuestionItem = ({
 }: CollapsedQuestionItemProps) => {
   return (
     <div
-      className={`question-editor-card collapsed ${question.type === 'disclaimer' ? 'disclaimer-card' : ''} ${question.condition ? 'conditional-card' : ''}`}
+      className={`question-editor-card collapsed ${question.type === 'disclaimer' ? 'disclaimer-card' : ''} ${question.dependencyQuestion ? 'conditional-card' : ''}`}
       data-q-id={question.id}
     >
       <div className="card-header">
@@ -59,7 +59,7 @@ export const CollapsedQuestionItem = ({
             </span>
           )}
           {question.required && question.type !== 'disclaimer' && <span title={requiredLabel} style={{ fontSize: 'var(--text-md)', color: '#ef4444', fontWeight: 700 }}>*</span>}
-          {question.condition && question.type !== 'disclaimer' && (
+          {question.dependencyQuestion && question.type !== 'disclaimer' && (
             <span title={conditionalLabel} style={{ display: 'inline-flex', alignItems: 'center', color: '#fbbf24' }}>
               <IconLink size={12} />
             </span>

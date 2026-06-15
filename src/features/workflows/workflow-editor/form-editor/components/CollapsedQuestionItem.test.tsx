@@ -40,7 +40,7 @@ describe('CollapsedQuestionItem Component', () => {
   });
 
   it('debería mostrar el indicador de condicional si la pregunta tiene condiciones lógicas', () => {
-    render(<CollapsedQuestionItem {...defaultProps as any} question={{ ...defaultProps.question, condition: { dependsOn: 'q2', expectedValue: 'Si' } }} />);
+    render(<CollapsedQuestionItem {...defaultProps as any} question={{ ...defaultProps.question, dependencyQuestion: 'q2', dependencyCondition: 'Si' }} />);
     expect(screen.getByTitle('Tiene Condición')).toBeInTheDocument();
   });
 

@@ -6,7 +6,7 @@ export const getQuestionNumberMap = (questions: FormQuestion[]) => {
   const topLevelQuestions: FormQuestion[] = [];
 
   questions.forEach((question) => {
-    const parentId = question.condition?.questionId;
+    const parentId = question.dependencyQuestion;
     const hasValidParent = !!parentId && questions.some(q => q.id === parentId);
 
     if (!hasValidParent || !parentId || parentId === question.id) {
@@ -84,7 +84,7 @@ export const buildQuestionTree = (questions: FormQuestion[]): QuestionNode[] => 
   const roots: QuestionNode[] = [];
   questions.forEach(q => {
     const node = nodesMap.get(q.id)!;
-    const parentId = q.condition?.questionId;
+    const parentId = q.dependencyQuestion;
     const hasValidParent = !!parentId && questions.some(pq => pq.id === parentId);
 
     if (!hasValidParent || !parentId || parentId === q.id) {

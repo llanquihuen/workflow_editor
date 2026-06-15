@@ -472,20 +472,17 @@ export const FormLibrary = () => {
     prevIdsRef.current = currentIds;
   });
 
-  const getDependentQuestions = (targetQuestionId: string, formId: string) => {
+  const getDependentQuestions = (targetQuestionId: string, _formId: string) => {
     const list: { formTitle: string; questionLabel: string; formId: string; questionId: string }[] = [];
     forms.forEach(form => {
       form.questions.forEach(q => {
-        if (q.condition && q.condition.questionId === targetQuestionId) {
-          const condFormId = q.condition.formId || form.id;
-          if (condFormId === formId) {
-            list.push({
-              formTitle: form.title,
-              questionLabel: q.label,
-              formId: form.id,
-              questionId: q.id
-            });
-          }
+        if (q.dependencyQuestion === targetQuestionId) {
+          list.push({
+            formTitle: form.title,
+            questionLabel: q.label,
+            formId: form.id,
+            questionId: q.id
+          });
         }
       });
     });
@@ -506,14 +503,19 @@ export const FormLibrary = () => {
   const externalDependencies = React.useMemo(() => {
     if (!selectedForm) return [];
     const deps: { form: Form; question: FormQuestion }[] = [];
+    const localQuestionIds = new Set(selectedForm.questions.map(q => q.id));
     selectedForm.questions.forEach(q => {
-      const cond = q.condition;
-      if (cond && cond.formId && cond.formId !== selectedForm.id) {
-        const otherForm = forms.find(f => f.id === cond.formId);
-        const otherQuestion = otherForm?.questions.find(pq => pq.id === cond.questionId);
-        if (otherForm && otherQuestion) {
-          if (!deps.some(d => d.question.id === otherQuestion.id)) {
-            deps.push({ form: otherForm, question: otherQuestion });
+      const depQId = q.dependencyQuestion;
+      if (depQId && !localQuestionIds.has(depQId)) {
+        // The dependency target is in another form
+        for (const otherForm of forms) {
+          if (otherForm.id === selectedForm.id) continue;
+          const otherQuestion = otherForm.questions.find(pq => pq.id === depQId);
+          if (otherQuestion) {
+            if (!deps.some(d => d.question.id === otherQuestion.id)) {
+              deps.push({ form: otherForm, question: otherQuestion });
+            }
+            break;
           }
         }
       }
@@ -523,23 +525,13 @@ export const FormLibrary = () => {
 
   const questionNumberMap = selectedForm ? getQuestionNumberMap(selectedForm.questions) : new Map<string, string>();
 
-  const evaluateCondition = (condition?: import('../../../../types/workflow.types').FormQuestionCondition) => {
-    if (!condition) return true;
-    const { questionId, operator, value } = condition;
-    const answer = previewAnswers[questionId];
+  const evaluateQuestionDependency = (question: FormQuestion) => {
+    if (!question.dependencyQuestion) return true;
+    const answer = previewAnswers[question.dependencyQuestion];
     if (answer === undefined || answer === null || answer === '') return false;
-
     const answerStr = String(answer).toLowerCase();
-    const valueStr = String(value).toLowerCase();
-
-    switch (operator) {
-      case 'equals': return answerStr === valueStr;
-      case 'not_equals': return answerStr !== valueStr;
-      case 'contains': return answerStr.includes(valueStr);
-      case 'greater_than': return Number(answer) > Number(value);
-      case 'less_than': return Number(answer) < Number(value);
-      default: return false;
-    }
+    const valueStr = String(question.dependencyCondition || '').toLowerCase();
+    return answerStr === valueStr;
   };
 
   const isDuplicateName = (title: string, formId?: string) => {
@@ -615,7 +607,7 @@ export const FormLibrary = () => {
     let updatedQuestions = selectedForm.questions.map(q =>
       q.id === questionId ? { ...q, ...updates } : q
     );
-    if ('condition' in updates) {
+    if ('dependencyQuestion' in updates) {
       capturePositions();
       updatedQuestions = sortQuestionsHierarchically(updatedQuestions);
     } else {
@@ -706,7 +698,7 @@ export const FormLibrary = () => {
       if (f) {
         let updatedQuestions = f.questions.map(q => {
           if (depQuestionIds.includes(q.id)) {
-            const { condition, ...rest } = q;
+            const { dependencyQuestion, dependencyCondition, ...rest } = q;
             return rest;
           }
           return q;
@@ -721,8 +713,8 @@ export const FormLibrary = () => {
     let updatedSelectedQuestions = selectedForm.questions
       .filter(q => q.id !== questionId)
       .map(q => {
-        if (q.condition && q.condition.questionId === questionId) {
-          const { condition, ...rest } = q;
+        if (q.dependencyQuestion === questionId) {
+          const { dependencyQuestion, dependencyCondition, ...rest } = q;
           return rest;
         }
         return q;
@@ -745,7 +737,7 @@ export const FormLibrary = () => {
       question.required === true ||
       question.isSensitive === true ||
       hasOptions ||
-      !!question.condition
+      !!question.dependencyQuestion
     );
   };
 
@@ -1267,7 +1259,7 @@ export const FormLibrary = () => {
                             }
 
                             return (
-                            <div key={q.id} className={`question-editor-card ${q.condition ? 'conditional-card' : ''}`} data-q-id={q.id}>
+                            <div key={q.id} className={`question-editor-card ${q.dependencyQuestion ? 'conditional-card' : ''}`} data-q-id={q.id}>
                               <div className="card-header" style={{ alignItems: 'center' }}>
                                 <div className="question-number-chip">{questionNumberMap.get(q.id) || `${index + 1}`}</div>
                                 <button
@@ -1306,11 +1298,20 @@ export const FormLibrary = () => {
                                   </div>
                                   <div style={{ display: 'flex', gap: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
                                     {q.required && <span className="node-badge badge-required">{t('common.required')}</span>}
-                                    {q.condition && (() => {
-                                      const cond = q.condition!;
-                                      const condForm = cond.formId ? forms.find(f => f.id === cond.formId) : selectedForm;
-                                      const condQuestion = condForm?.questions.find(pq => pq.id === cond.questionId);
-                                      const locationText = cond.formId && condForm ? `[${condForm.title}] ` : '';
+                                    {q.dependencyQuestion && (() => {
+                                      // Find the parent question across all forms
+                                      let condQuestion: FormQuestion | undefined;
+                                      let condForm: Form | undefined;
+                                      for (const f of forms) {
+                                        const found = f.questions.find(pq => pq.id === q.dependencyQuestion);
+                                        if (found) {
+                                          condQuestion = found;
+                                          condForm = f;
+                                          break;
+                                        }
+                                      }
+                                      const isExternal = condForm && condForm.id !== selectedForm.id;
+                                      const locationText = isExternal ? `[${condForm!.title}] ` : '';
                                       return (
                                         <span className="node-badge badge-conditional-q" style={{ display: 'flex', gap: 'var(--spacing-xs)', alignItems: 'center' }}>
                                           {t('common.conditional')}
@@ -1429,7 +1430,7 @@ export const FormLibrary = () => {
                                     <select
                                       className="form-input"
                                       style={{ marginBottom: 'var(--spacing-sm)' }}
-                                      value={q.condition ? `${q.condition.formId || selectedForm.id}|${q.condition.questionId}` : ''}
+                                      value={q.dependencyQuestion || ''}
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         if (val === 'SHOW_OTHER_FORMS') {
@@ -1446,52 +1447,54 @@ export const FormLibrary = () => {
                                             next.delete(q.id);
                                             return next;
                                           });
-                                          if (q.condition && q.condition.formId) {
-                                            handleQuestionUpdate(q.id, { condition: undefined });
+                                          if (q.dependencyQuestion && !selectedForm.questions.some(sq => sq.id === q.dependencyQuestion)) {
+                                            handleQuestionUpdate(q.id, { dependencyQuestion: undefined, dependencyCondition: undefined });
                                           }
                                           return;
                                         }
                                         if (!val) {
-                                          handleQuestionUpdate(q.id, { condition: undefined });
+                                          handleQuestionUpdate(q.id, { dependencyQuestion: undefined, dependencyCondition: undefined });
                                         } else {
-                                          const [formId, questionId] = val.split('|');
                                           handleQuestionUpdate(q.id, {
-                                            condition: {
-                                              formId: formId === selectedForm.id ? undefined : formId,
-                                              questionId,
-                                              operator: 'equals',
-                                              value: ''
-                                            }
+                                            dependencyQuestion: val,
+                                            dependencyCondition: ''
                                           });
                                         }
                                       }}
                                     >
                                       <option value="">{t('forms.always_visible')}</option>
-                                      {index > 0 && (
-                                        <optgroup label={selectedForm.title}>
-                                          {selectedForm.questions.slice(0, index).map(prevQ => (
-                                            <option key={prevQ.id} value={`${selectedForm.id}|${prevQ.id}`}>{t('forms.show_if')}{prevQ.label}</option>
-                                          ))}
-                                        </optgroup>
-                                      )}
+                                      {index > 0 && (() => {
+                                        const dropdownPrevQs = selectedForm.questions.slice(0, index).filter(prevQ => prevQ.type === 'dropdown');
+                                        if (dropdownPrevQs.length === 0) return null;
+                                        return (
+                                          <optgroup label={selectedForm.title}>
+                                            {dropdownPrevQs.map(prevQ => (
+                                              <option key={prevQ.id} value={prevQ.id}>{t('forms.show_if')}{prevQ.label}</option>
+                                            ))}
+                                          </optgroup>
+                                        );
+                                      })()}
                                       
                                       {(() => {
-                                        const isOtherFormsVisible = showOtherFormsForQuestions.has(q.id) || (q.condition && q.condition.formId !== undefined);
+                                        const localQuestionIds = new Set(selectedForm.questions.map(sq => sq.id));
+                                        const isExternalDep = q.dependencyQuestion && !localQuestionIds.has(q.dependencyQuestion);
+                                        const isOtherFormsVisible = showOtherFormsForQuestions.has(q.id) || isExternalDep;
                                         const otherAvailableForms = forms.filter(f => f.id !== selectedForm.id && getFormRank(f.id) < getFormRank(selectedForm.id));
-                                        const hasOtherFormsWithQuestions = otherAvailableForms.some(f => f.questions.length > 0);
+                                        const hasOtherFormsWithDropdowns = otherAvailableForms.some(f => f.questions.some(fq => fq.type === 'dropdown'));
 
-                                        if (!hasOtherFormsWithQuestions) return null;
+                                        if (!hasOtherFormsWithDropdowns) return null;
 
                                         if (isOtherFormsVisible) {
                                           return (
                                             <>
                                               <option value="HIDE_OTHER_FORMS">◀ {t('forms.hide_other_forms_options')}</option>
                                               {otherAvailableForms.map(otherForm => {
-                                                if (otherForm.questions.length === 0) return null;
+                                                const dropdownQs = otherForm.questions.filter(oq => oq.type === 'dropdown');
+                                                if (dropdownQs.length === 0) return null;
                                                 return (
                                                   <optgroup key={otherForm.id} label={otherForm.title}>
-                                                    {otherForm.questions.map(otherQ => (
-                                                      <option key={otherQ.id} value={`${otherForm.id}|${otherQ.id}`}>{t('forms.show_if')}{otherQ.label}</option>
+                                                    {dropdownQs.map(otherQ => (
+                                                      <option key={otherQ.id} value={otherQ.id}>{t('forms.show_if')}{otherQ.label}</option>
                                                     ))}
                                                   </optgroup>
                                                 );
@@ -1506,94 +1509,29 @@ export const FormLibrary = () => {
                                       })()}
                                     </select>
 
-                                    {q.condition && (
-                                      <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
-                                        <select
-                                          className="form-input"
-                                          style={{ flex: 1 }}
-                                          value={q.condition.operator}
-                                          onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...q.condition!, operator: e.target.value as any } })}
-                                        >
-                                          <option value="equals">{t('forms.operators.equals')}</option>
-                                          <option value="not_equals">{t('forms.operators.not_equals')}</option>
-                                          <option value="contains">{t('forms.operators.contains')}</option>
-                                          {(() => {
-                                            const cond = q.condition!;
-                                            const condForm = cond.formId ? forms.find(f => f.id === cond.formId) : selectedForm;
-                                            const targetQ = condForm?.questions.find(pq => pq.id === cond.questionId);
-                                            if (targetQ && targetQ.type === 'number') {
-                                              return (
-                                                <>
-                                                  <option value="greater_than">{t('forms.operators.greater_than')}</option>
-                                                  <option value="less_than">{t('forms.operators.less_than')}</option>
-                                                </>
-                                              );
-                                            }
-                                            return null;
-                                          })()}
-                                        </select>
-
-                                        {(() => {
-                                          const cond = q.condition!;
-                                          const condForm = cond.formId ? forms.find(f => f.id === cond.formId) : selectedForm;
-                                          const targetQ = condForm?.questions.find(pq => pq.id === cond.questionId);
-                                          if (targetQ && (targetQ.type === 'dropdown' || targetQ.type === 'radio') && targetQ.options) {
-                                            return (
-                                              <select
-                                                className="form-input"
-                                                style={{ flex: 1 }}
-                                                value={cond.value}
-                                                onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...cond, value: e.target.value } })}
-                                              >
-                                                <option value="">{t('common.select_option')}</option>
-                                                {targetQ.options.map(opt => (
-                                                  <option key={opt} value={opt}>{opt}</option>
-                                                ))}
-                                              </select>
-                                            );
-                                          }
-                                          if (targetQ && targetQ.type === 'yes_no') {
-                                            return (
-                                              <select
-                                                className="form-input"
-                                                style={{ flex: 1 }}
-                                                value={cond.value}
-                                                onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...cond, value: e.target.value } })}
-                                              >
-                                                <option value="">{t('common.select_option')}</option>
-                                                <option value="Yes">{t('common.yes')}</option>
-                                                <option value="No">{t('common.no')}</option>
-                                              </select>
-                                            );
-                                          }
-                                          if (targetQ && targetQ.type === 'user') {
-                                            return (
-                                              <select
-                                                className="form-input"
-                                                style={{ flex: 1 }}
-                                                value={cond.value}
-                                                onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...cond, value: e.target.value } })}
-                                              >
-                                                <option value="">{t('common.select_option')}</option>
-                                                {DUMMY_USERS.map(u => (
-                                                  <option key={u.id} value={u.id}>{u.name}</option>
-                                                ))}
-                                              </select>
-                                            );
-                                          }
-                                          return (
-                                            <input
-                                              type={targetQ && targetQ.type === 'date' ? 'date' : 'text'}
-                                              className="form-input"
-                                              style={{ flex: 1 }}
-                                              placeholder={t('forms.expected_value')}
-                                              value={cond.value}
-                                              onChange={(e) => handleQuestionUpdate(q.id, { condition: { ...cond, value: e.target.value } })}
-                                            />
-                                          );
-                                        })()}
-                                      </div>
-                                    )}
+                                    {q.dependencyQuestion && (() => {
+                                      let targetQ: FormQuestion | undefined;
+                                      for (const f of forms) {
+                                        const found = f.questions.find(pq => pq.id === q.dependencyQuestion);
+                                        if (found) { targetQ = found; break; }
+                                      }
+                                      if (!targetQ || targetQ.type !== 'dropdown' || !targetQ.options) return null;
+                                      return (
+                                        <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
+                                          <select
+                                            className="form-input"
+                                            style={{ flex: 1 }}
+                                            value={q.dependencyCondition || ''}
+                                            onChange={(e) => handleQuestionUpdate(q.id, { dependencyCondition: e.target.value })}
+                                          >
+                                            <option value="">{t('common.select_option')}</option>
+                                            {targetQ.options.map(opt => (
+                                              <option key={opt} value={opt}>{opt}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </div>
@@ -1618,7 +1556,6 @@ export const FormLibrary = () => {
                                   question={q}
                                   onUpdateOptions={(opts) => handleQuestionUpdate(q.id, { options: opts })}
                                   t={t}
-                                  formId={selectedForm.id}
                                   forms={forms}
                                   onShowWarning={(title, message) => setAlternativeWarning({ title, message })}
                                 />
@@ -1746,7 +1683,7 @@ export const FormLibrary = () => {
                         {selectedForm.questions.length === 0 ? (
                           <p className="form-desc" style={{ textAlign: 'center', padding: 'var(--spacing-xl)' }}>{t('forms.no_questions')}</p>
                         ) : (
-                          selectedForm.questions.filter(q => evaluateCondition(q.condition)).map(q => {
+                          selectedForm.questions.filter(q => evaluateQuestionDependency(q)).map(q => {
                             if (q.type === 'disclaimer') {
                               return (
                                 <div key={q.id} className="preview-disclaimer" style={{ marginBottom: 'var(--spacing-xl)', borderBottom: '1px solid var(--panel-border)', paddingBottom: 'var(--spacing-md)' }}>

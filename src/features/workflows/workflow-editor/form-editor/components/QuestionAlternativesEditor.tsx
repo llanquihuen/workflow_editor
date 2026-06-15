@@ -5,7 +5,6 @@ export interface QuestionAlternativesEditorProps {
   question: FormQuestion;
   onUpdateOptions: (options: string[]) => void;
   t: (key: string, options?: any) => string;
-  formId: string;
   forms: Form[];
   onShowWarning: (title: string, message: string) => void;
 }
@@ -14,7 +13,6 @@ export const QuestionAlternativesEditor = ({
   question,
   onUpdateOptions,
   t,
-  formId,
   forms,
   onShowWarning
 }: QuestionAlternativesEditorProps) => {
@@ -49,13 +47,13 @@ export const QuestionAlternativesEditor = ({
 
   const duplicateCount = duplicates.size;
 
-  const getLinkedOptionsForQuestion = (qId: string, fId: string) => {
+  const getLinkedOptionsForQuestion = (qId: string) => {
     const linked: string[] = [];
     forms.forEach(form => {
       form.questions.forEach(q => {
-        if (q.condition && q.condition.questionId === qId && (q.condition.formId || form.id) === fId) {
-          if (!linked.includes(q.condition.value)) {
-            linked.push(q.condition.value);
+        if (q.dependencyQuestion === qId) {
+          if (q.dependencyCondition && !linked.includes(q.dependencyCondition)) {
+            linked.push(q.dependencyCondition);
           }
         }
       });
@@ -64,7 +62,7 @@ export const QuestionAlternativesEditor = ({
   };
 
   const validateNewOptions = (newOpts: string[]) => {
-    const linkedOpts = getLinkedOptionsForQuestion(question.id, formId);
+    const linkedOpts = getLinkedOptionsForQuestion(question.id);
     const missing = linkedOpts.filter(opt => !newOpts.includes(opt));
     if (missing.length > 0) {
       onShowWarning(
@@ -90,7 +88,7 @@ export const QuestionAlternativesEditor = ({
       newOpts.some((opt, idx) => opt !== currentOptions[idx]);
 
     if (optionsChanged) {
-      const linkedOpts = getLinkedOptionsForQuestion(question.id, formId);
+      const linkedOpts = getLinkedOptionsForQuestion(question.id);
       const missing = linkedOpts.filter(opt => !newOpts.includes(opt));
       if (missing.length === 0) {
         onUpdateOptions(newOpts);
@@ -199,10 +197,8 @@ export const QuestionAlternativesEditor = ({
                   e.stopPropagation();
                   const isLinked = forms.some(form => 
                     form.questions.some(q => 
-                      q.condition && 
-                      q.condition.questionId === question.id && 
-                      q.condition.value === opt &&
-                      (q.condition.formId || form.id) === formId
+                      q.dependencyQuestion === question.id && 
+                      q.dependencyCondition === opt
                     )
                   );
                   if (isLinked) {
