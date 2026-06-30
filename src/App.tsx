@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from './components/ui/ResizablePanels';
 import { JsonEditor } from './features/workflows/workflow-editor/json-editor/JsonEditor';
 import { WorkflowCanvas } from './features/workflows/workflow-editor/WorkflowCanvas';
 import { TaskEditor } from './features/workflows/workflow-editor/task-editor/TaskEditor';
